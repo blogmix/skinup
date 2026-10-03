@@ -268,7 +268,7 @@
   <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
     <h2>🎡 Колесо апгрейда</h2>
-    <p class="muted">Цветной сектор снизу — зона выигрыша. Чёрный сверху — зона проигрыша, граница между ними чёткая. Колесо стоит на месте, стрелка бежит по краю: попала в цвет — апгрейд, в чёрное — сгорело.</p>
+    <p class="muted">Жёлто-оранжевая дуга снизу — зона выигрыша, её размер равен шансу. Чёрный верх — зона проигрыша. Границы резкие. Колесо стоит на месте, стрелка бежит по краю: попала в цвет — апгрейд, в чёрное — сгорело.</p>
     <div class="chances" id="chances">
       <button data-ch="35">35%</button>
       <button data-ch="50" class="on">50%</button>
@@ -405,10 +405,16 @@
       <div class="social-row" style="border-bottom:none;">
         <div class="ic">🎁</div>
         <div class="info">
-          <div class="nm">Награда за подписку</div>
-          <div class="ds">Подпишись на канал — получи 50 000 🪙 (один раз)</div>
+          <div class="nm">Награда за подписку — 50 000 🪙</div>
+          <div class="ds">Подпишись на канал и введи кодовое слово из закрепа</div>
         </div>
-        <button class="primary" id="tgClaimBtn" onclick="claimTgReward()">50 000 🪙</button>
+        <button class="primary" id="tgClaimBtn" onclick="openTgChannel()">Открыть</button>
+      </div>
+      <div id="tgWordBox" style="display:none;gap:8px;padding:10px 0 2px;">
+        <div style="display:flex;gap:8px;">
+          <input id="tgWord" type="text" placeholder="Кодовое слово из закрепа" style="flex:1;">
+          <button class="primary" onclick="checkTgWord()">Проверить</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -890,15 +896,16 @@ function vib(ms){ if(vibOn() && navigator.vibrate) try{ navigator.vibrate(ms); }
 let ch = 50, spinning=false, speed=1, angle=0, turbo=false;
 let selSkins = new Set();
 function drawWheel(){
-  // чёрная зона проигрыша сверху, цветная зона выигрыша снизу, граница резкая
-  const lossSpan = (100-ch)*3.6;   // градусов чёрного
-  const half = lossSpan/2;
+  // цветная зона выигрыша — дуга снизу размером ровно ch% круга,
+  // чёрная зона проигрыша — всё остальное сверху. Границы резкие.
+  const startCol = 180 - ch*1.8;  // начало цветной дуги (градусы от верха, по часовой)
+  const endCol   = 180 + ch*1.8;  // конец цветной дуги
   document.getElementById("wheel").style.background =
-    `conic-gradient(from -${half}deg, ` +
-    `#0b0b12 0deg ${lossSpan}deg, ` +
-    `#ffd83d ${lossSpan}deg 180deg, ` +
-    `#ff9d00 180deg ${356-lossSpan}deg, ` +
-    `#0b0b12 ${356-lossSpan}deg 360deg)`;
+    `conic-gradient(` +
+    `#0b0b12 0deg ${startCol}deg, ` +
+    `#ffd83d ${startCol}deg 180deg, ` +
+    `#ff9d00 180deg ${endCol}deg, ` +
+    `#0b0b12 ${endCol}deg 360deg)`;
 }
 function updateWheelInfo(){
   const p = document.getElementById("wheelPct");
@@ -924,10 +931,10 @@ function spin(){
   if(!staked.length){ toast("Выбери скины для крутки!"); return; }
   spinning=true; speed=1;
   const win = Math.random()*100 < ch;
-  // стрелка внизу: 0 = низ (цветная зона выигрыша), 180 = верх (чёрная зона проигрыша)
+  // стрелка при повороте 0 стоит внизу (центр цветной зоны), при 180 — наверху (чёрное)
   const delta = win
-    ? (Math.random()-0.5)*1.7*ch
-    : 180 + (Math.random()-0.5)*1.6*(100-ch);
+    ? (Math.random()-0.5)*1.6*ch*1.8      // внутри цветной дуги
+    : 180 + (Math.random()-0.5)*1.6*(100-ch)*1.8; // внутри чёрной зоны
   const base = angle + 360*(4+Math.random()*3);
   const target = Math.ceil((base - delta)/360)*360 + delta;
   sfx("click"); vib(15);
@@ -1379,23 +1386,39 @@ document.getElementById("clickCircle").addEventListener("pointerdown", e=>{
 
 /* ================= TELEGRAM-НАГРАДА ================= */
 const TG_REWARD = 50000;
+const TG_WORD = "SKINUP"; // слово из закреплённого поста в канале. Поменял здесь — поменяй и в канале.
 function updTgBtn(){
   const b = document.getElementById("tgClaimBtn");
   if(!b) return;
   if(S.used.TG_SUB){
     b.textContent = "✓ Получено";
     b.disabled = true;
+    const wb = document.getElementById("tgWordBox");
+    if(wb) wb.style.display = "none";
   } else {
-    b.textContent = "50 000 🪙";
+    b.textContent = "Открыть";
     b.disabled = false;
   }
 }
-function claimTgReward(){
+function openTgChannel(){
   if(S.used.TG_SUB){ toast("Награда за подписку уже получена"); return; }
   window.open("https://t.me/SkinUpRu","_blank");
+  document.getElementById("tgWordBox").style.display = "block";
+  toast("Подпишись и введи слово из закреплённого поста");
+}
+function checkTgWord(){
+  const v = (document.getElementById("tgWord").value||"").trim().toUpperCase();
+  if(!v){ toast("Введи кодовое слово из закрепа канала"); return; }
+  if(v !== TG_WORD.toUpperCase()){
+    toast("Неверное слово — загляни в закреп канала");
+    sfx("lose"); vib(40);
+    return;
+  }
   S.used.TG_SUB = 1;
   addBal(TG_REWARD);
   sfx("coin"); vib(30);
+  document.getElementById("tgWordBox").style.display = "none";
+  document.getElementById("tgWord").value = "";
   toast("Награда за подписку: +"+fmt(TG_REWARD)+" 🪙");
   updTgBtn(); save();
 }
@@ -1475,7 +1498,7 @@ const PROMOS = {
 function applyPromo(){
   const raw = (document.getElementById("promoInput").value||"").trim();
   const msg = document.getElementById("promoMsg");
-  if(!raw){ msg.textContent = "Введи промокode.".replace("code","код"); return; }
+  if(!raw){ msg.textContent = "Введи промокод."; return; }
   const key = Object.keys(PROMOS).find(k=>k.toLowerCase()===raw.toLowerCase());
   if(!key){
     msg.textContent = "Такого промокода нет 🤷";
