@@ -60,7 +60,7 @@
   body.light .auth-card input { background:#f4f5f9; color:#1c1c28; border-color:#d9dce3; }
 
   /* ===== 1. КОЛЕСО ===== */
-  .wheel-wrap { position:relative; width:300px; height:300px; margin:18px auto; }
+  .wheel-wrap { position:relative; width:280px; height:280px; margin:14px auto 8px; }
   .wheel { position:absolute; inset:0; border-radius:50%; background:#111;
            box-shadow:0 0 30px rgba(255,216,61,.2), inset 0 0 22px rgba(0,0,0,.6); }
   .wheel-cover { position:absolute; inset:30px; border-radius:50%;
@@ -80,11 +80,29 @@
   .lbl-l { left:-8px; top:50%; transform:translateY(-50%); }
   .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
   .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ffd83d; }
-  .wheel-result { text-align:center; font-weight:800; font-size:18px; min-height:26px; margin-top:6px; }
+  .wheel-result { text-align:center; font-weight:800; font-size:16px; min-height:24px; margin-top:8px; }
+
+  /* ===== СТАВКА И ЦЕЛЬ ===== */
+  .bet-row { display:flex; align-items:stretch; gap:8px; margin:12px 0 10px; }
+  .bet-card { flex:1; border-radius:14px; padding:12px 8px; text-align:center;
+              background:#181824; min-height:150px; }
+  .bet-card.stake { border:2px solid #ffd83d; box-shadow:0 0 14px rgba(255,216,61,.15); cursor:pointer; }
+  .bet-card.target { border:2px solid #7ec8ff; }
+  .bet-title { font-size:11.5px; font-weight:800; letter-spacing:1px; margin-bottom:8px; }
+  .bet-card.stake .bet-title { color:#ffd83d; }
+  .bet-card.target .bet-title { color:#7ec8ff; }
+  .bet-arrow { align-self:center; font-size:24px; color:#ffd83d; font-weight:900; }
+  .bet-em { font-size:42px; line-height:1.15; }
+  .bet-nm { font-size:12px; margin:6px 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bet-pr { font-weight:800; color:#ffd83d; font-size:15px; }
+  .bet-empty { color:#888; font-size:12.5px; padding:34px 4px; }
+  .bet-empty span { display:block; font-size:11px; color:#666; margin-top:6px; }
+  .roll-btn { width:100%; padding:15px; font-size:17px; border-radius:14px; letter-spacing:1px; }
   .spin-controls { display:flex; gap:8px; }
-  .spin-controls button { flex:1; }
-  .spin-controls .bolt { max-width:110px; font-size:20px; background:#2a2a3a; }
+  .spin-controls .roll-btn { flex:1; }
+  .spin-controls .bolt { max-width:56px; font-size:20px; background:#2a2a3a; }
   .spin-controls .bolt.on { background:#ffd83d; color:#111; }
+  #upgPicker { margin-top:10px; }
 
   /* ===== 2. КЕЙСЫ ===== */
   .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
@@ -225,6 +243,9 @@
   body.light .tape::after { background:linear-gradient(270deg,#f7f8fb,transparent); }
   body.light .wheel-cover { background:#fff; border-color:#d9dce3; }
   body.light .wc-sub { color:#666; }
+  body.light .bet-card { background:#fff; }
+  body.light .bet-empty { color:#999; }
+  body.light .bet-card.stake .bet-pr, body.light .bet-card.target .bet-pr { color:#b8860b; }
   body.light .spin-controls .bolt { background:#e8e8ee; color:#333; }
 </style>
 </head>
@@ -268,7 +289,6 @@
   <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
     <h2>🎡 Колесо апгрейда</h2>
-    <p class="muted">Жёлто-оранжевая дуга снизу — зона выигрыша, её размер равен шансу. Чёрный верх — зона проигрыша. Границы резкие. Колесо стоит на месте, стрелка бежит по краю: попала в цвет — апгрейд, в чёрное — сгорело.</p>
     <div class="chances" id="chances">
       <button data-ch="35">35%</button>
       <button data-ch="50" class="on">50%</button>
@@ -288,16 +308,28 @@
       <div class="ring-lbl lbl-r">50%</div>
       <div class="ring-lbl lbl-b">0%</div>
     </div>
-    <div class="wheel-result" id="wheelRes">&nbsp;</div>
+    <div class="bet-row">
+      <div class="bet-card stake" id="betStake" onclick="toggleUpgPicker()">
+        <div class="bet-title">ВАША СТАВКА</div>
+        <div id="betStakeBody"><div class="bet-empty">Ничего не выбрано<span>нажми, чтобы выбрать скины</span></div></div>
+      </div>
+      <div class="bet-arrow">→</div>
+      <div class="bet-card target" id="betTarget">
+        <div class="bet-title">ЦЕЛЬ</div>
+        <div id="betTargetBody"><div class="bet-empty">—</div></div>
+      </div>
+    </div>
     <div class="spin-controls">
-      <button class="primary" id="btnSpin" onclick="spin()">КРУТИТЬ</button>
+      <button class="primary roll-btn" id="btnSpin" onclick="spin()">⏏ ПРОКАЧАТЬ</button>
       <button class="bolt" id="btnBolt" onclick="boost()">⚡</button>
     </div>
-    <p class="muted" style="margin-top:8px;">⚡ — переключатель турбо: нажал — кейсы крутятся быстро, нажал ещё раз — вернулась обычная скорость. Действует на все кейсы.</p>
-    <h3>Скины на прокрутку</h3>
-    <p class="muted">Нажми на скин — он выделится жёлтой рамкой. Выбранные скины крутятся все вместе: при выигрыше каждый из них заменяется на более дорогой, при проигрыше — сгорает.</p>
-    <div class="inv-grid" id="upgInv"></div>
-    <button style="width:100%;margin-top:8px;" onclick="clearUpgSel()">Снять выделение</button>
+    <div class="wheel-result" id="wheelRes">&nbsp;</div>
+    <p class="muted" style="margin-top:6px;">Нажми на карточку ставки, чтобы выбрать скины. При выигрыше каждый скин заменится на более дорогой, при проигрыше — сгорит. ⚡ — переключатель турбо для кейсов.</p>
+    <div id="upgPicker" style="display:none;">
+      <h3>Выбери скины</h3>
+      <div class="inv-grid" id="upgInv"></div>
+      <button style="width:100%;margin-top:8px;" onclick="clearUpgSel()">Снять выделение</button>
+    </div>
   </section>
 
   <!-- ===== КЕЙСЫ ===== -->
@@ -918,20 +950,50 @@ function updateWheelInfo(){
 function drawNeedle(){
   document.getElementById("needleRot").style.transform = `rotate(${angle}deg)`;
 }
-drawWheel(); drawNeedle(); updateWheelInfo();
+function betMult(){ return ch===35 ? 2.5 : ch===50 ? 2 : 1.5; }
+function renderBetCards(){
+  const stakeBody = document.getElementById("betStakeBody");
+  const targetBody = document.getElementById("betTargetBody");
+  if(!stakeBody || !targetBody) return;
+  const staked = [...selSkins].map(k=>invView[k]).filter(Boolean);
+  if(!staked.length){
+    stakeBody.innerHTML = `<div class="bet-empty">Ничего не выбрано<span>нажми, чтобы выбрать скины</span></div>`;
+    targetBody.innerHTML = `<div class="bet-empty">—</div>`;
+    return;
+  }
+  const sum = staked.reduce((a,s)=>a+s.p,0);
+  const first = staked[0];
+  stakeBody.innerHTML =
+    `<div class="bet-em">${first.em}</div>` +
+    `<div class="bet-nm">${staked.length>1 ? staked.length+" скина · "+first.nm : first.nm}</div>` +
+    `<div class="bet-pr">${fmt(sum)} 🪙</div>`;
+  const tgt = nearestSkin(sum*betMult());
+  targetBody.innerHTML =
+    `<div class="bet-em">${tgt.em}</div>` +
+    `<div class="bet-nm">${tgt.nm}</div>` +
+    `<div class="bet-pr">${fmt(tgt.p)} 🪙</div>`;
+}
+drawWheel(); drawNeedle(); updateWheelInfo(); renderBetCards();
 document.getElementById("chances").addEventListener("click", e=>{
   if(!e.target.dataset.ch) return;
   ch = +e.target.dataset.ch;
   document.querySelectorAll("#chances button").forEach(b=>b.classList.toggle("on", b===e.target));
-  drawWheel(); updateWheelInfo();
+  drawWheel(); updateWheelInfo(); renderBetCards();
 });
+function toggleUpgPicker(){
+  const p = document.getElementById("upgPicker");
+  const show = p.style.display==="none" || !p.style.display;
+  p.style.display = show ? "block" : "none";
+  if(show) renderUpgInv();
+  vib(8); sfx("click");
+}
 function spin(){
   if(spinning) return;
   const staked = [...selSkins].map(k=>invView[k]).filter(Boolean);
-  if(!staked.length){ toast("Выбери скины для крутки!"); return; }
+  if(!staked.length){ toast("Сначала выбери скины — нажми на карточку ставки!"); return; }
   spinning=true; speed=1;
   const win = Math.random()*100 < ch;
-  // стрелка при повороте 0 стоит внизу (центр цветной зоны), при 180 — наверху (чёрное)
+  // стрелка внизу: 0 = низ (цветная зона выигрыша), 180 = верх (чёрная зона проигрыша)
   const delta = win
     ? (Math.random()-0.5)*1.6*ch*1.8      // внутри цветной дуги
     : 180 + (Math.random()-0.5)*1.6*(100-ch)*1.8; // внутри чёрной зоны
@@ -941,12 +1003,11 @@ function spin(){
   animateSpin(target, ()=>{
     const res = document.getElementById("wheelRes");
     if(win){
-      const mult = ch===35 ? 2.5 : ch===50 ? 2 : 1.5;
       const upgraded = [];
       staked.forEach(s=>{
         const pos = S.inv.indexOf(s.i);
         if(pos>-1) S.inv.splice(pos,1);
-        const ns = nearestSkin(s.p*mult);
+        const ns = nearestSkin(s.p*betMult());
         S.inv.push(ns.i); upgraded.push(ns);
       });
       res.innerHTML = "✅ Апгрейд! " + (upgraded.length<=3 ?
@@ -963,7 +1024,7 @@ function spin(){
       sfx("lose"); vib(120);
     }
     save(); spinning=false;
-    selSkins.clear(); updateSpinBtn(); renderInv();
+    selSkins.clear(); renderBetCards(); renderInv();
   });
 }
 function animateSpin(target, done){
@@ -1261,7 +1322,7 @@ function sellAll(){
 function renderUpgInv(){
   const box = document.getElementById("upgInv");
   if(!box) return;
-  updateSpinBtn();
+  renderBetCards();
   if(!invView.length){
     box.innerHTML = `<p class="muted">Нет скинов — купи в маркете или выбей из кейса.</p>`;
     return;
@@ -1320,10 +1381,6 @@ function makeContract(){
   sfx(win?"win":"lose"); vib(win?[30,60,30]:120);
   contractSel.clear(); contractBusy = false;
   save(); renderInv();
-}
-function updateSpinBtn(){
-  const b = document.getElementById("btnSpin");
-  if(b) b.textContent = selSkins.size ? `КРУТИТЬ (${selSkins.size} шт.)` : "КРУТИТЬ";
 }
 
 /* ================= 3. ПРОФИЛЬ: ЗАДАНИЯ ================= */
@@ -1482,7 +1539,7 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   document.querySelectorAll("main section").forEach(s=>s.classList.remove("active"));
   document.getElementById(b.dataset.p).classList.add("active");
   vib(10); sfx("click");
-  if(b.dataset.p==="p-upgrade") renderUpgInv();
+  if(b.dataset.p==="p-upgrade"){ renderUpgInv(); renderBetCards(); }
   if(b.dataset.p==="p-profile"){ renderLB(); renderTradeSel(); updTgBtn(); }
   if(b.dataset.p==="p-market") renderMarket();
   if(b.dataset.p==="p-inv") renderInv();
