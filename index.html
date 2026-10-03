@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
- <link rel="icon" type="image/png" href="favicon.png">
+<link rel="icon" type="image/png" href="favicon.png">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -33,8 +33,11 @@
     background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
     padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
   .chances { display:flex; gap:8px; margin:10px 0; }
-  .chances button { flex:1; }
-  .chances button.on { background:#ffd83d; color:#111; outline:2px solid #fff; }
+  .chances button { flex:1; border-radius:12px; border:2px solid #2a2a3a; background:#181824; color:#ccc; }
+  .chances button.on { outline:none; }
+  .chances button.on[data-ch="35"] { border-color:#ff6b6b; color:#ff6b6b; background:#2a1418; }
+  .chances button.on[data-ch="50"] { border-color:#ffd83d; color:#ffd83d; background:#2a2410; }
+  .chances button.on[data-ch="75"] { border-color:#8f8; color:#8f8; background:#102416; }
 
   /* ===== ЭКРАН ВХОДА ===== */
   .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
@@ -57,20 +60,26 @@
   body.light .auth-card input { background:#f4f5f9; color:#1c1c28; border-color:#d9dce3; }
 
   /* ===== 1. КОЛЕСО ===== */
-  .wheel-wrap { position:relative; width:280px; height:280px; margin:16px auto; }
-  .wheel { position:absolute; inset:0; border-radius:50%; border:6px solid #333; background:#111; }
+  .wheel-wrap { position:relative; width:300px; height:300px; margin:18px auto; }
+  .wheel { position:absolute; inset:0; border-radius:50%; background:#111;
+           box-shadow:0 0 30px rgba(255,216,61,.2), inset 0 0 22px rgba(0,0,0,.6); }
+  .wheel-cover { position:absolute; inset:30px; border-radius:50%;
+           background:radial-gradient(circle at 50% 35%, #1c1c2a, #0e0e16);
+           border:1px solid #2a2a3a; z-index:4;
+           display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .wc-pct { font-weight:900; font-size:42px; line-height:1; color:#8f8; }
+  .wc-sub { font-size:12.5px; color:#999; margin-top:6px; }
   .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
-  .needle { position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+  .needle { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
             width:0; height:0; z-index:5;
-            border-left:13px solid transparent; border-right:13px solid transparent;
-            border-top:38px solid #e63946;
-            filter:drop-shadow(0 2px 3px rgba(0,0,0,.7)); pointer-events:none; }
-  .needle-in { position:absolute; top:-2px; left:50%; transform:translateX(-50%);
-            width:0; height:0; z-index:6; pointer-events:none;
-            border-left:8px solid transparent; border-right:8px solid transparent;
-            border-top:28px solid #14141f; }
-  .hub { position:absolute; left:50%; top:50%; width:16px; height:16px; margin:-8px 0 0 -8px;
-         border-radius:50%; background:#222; border:2px solid #555; z-index:6; }
+            border-left:10px solid transparent; border-right:10px solid transparent;
+            border-bottom:36px solid #ffd83d;
+            filter:drop-shadow(0 0 8px rgba(255,216,61,.8)); pointer-events:none; }
+  .ring-lbl { position:absolute; z-index:6; font-size:11.5px; font-weight:700; color:#bbb; }
+  .lbl-top { top:-4px; left:50%; transform:translateX(-50%); }
+  .lbl-l { left:-8px; top:50%; transform:translateY(-50%); }
+  .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
+  .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ff8a80; }
   .wheel-result { text-align:center; font-weight:800; font-size:18px; min-height:26px; margin-top:6px; }
   .spin-controls { display:flex; gap:8px; }
   .spin-controls button { flex:1; }
@@ -206,9 +215,8 @@
   body.light .titem .pr { color:#777; }
   body.light .tape::before { background:linear-gradient(90deg,#f7f8fb,transparent); }
   body.light .tape::after { background:linear-gradient(270deg,#f7f8fb,transparent); }
-  body.light .wheel { border-color:#c9ccd4; }
-  body.light .hub { background:#e8e8ee; border-color:#aaa; }
-  body.light .needle-in { border-top-color:#fff; }
+  body.light .wheel-cover { background:#fff; border-color:#d9dce3; }
+  body.light .wc-sub { color:#666; }
   body.light .spin-controls .bolt { background:#e8e8ee; color:#333; }
 </style>
 </head>
@@ -252,7 +260,7 @@
   <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
     <h2>🎡 Колесо апгрейда</h2>
-    <p class="muted">Выбери шанс — жёлтый сектор равен твоему шансу. Колесо стоит на месте, стрелка бежит по его краю: где остановится — жёлтый или чёрный, такой и результат.</p>
+    <p class="muted">Цветной сектор сверху — твой шанс на успех, красный снизу — проигрыш. Колесо стоит на месте, стрелка бежит по его краю: где остановится — такой и результат.</p>
     <div class="chances" id="chances">
       <button data-ch="35">35%</button>
       <button data-ch="50" class="on">50%</button>
@@ -260,11 +268,17 @@
     </div>
     <div class="wheel-wrap">
       <div class="wheel" id="wheel"></div>
+      <div class="wheel-cover">
+        <div class="wc-pct" id="wheelPct">50%</div>
+        <div class="wc-sub" id="wheelSub">средний шанс</div>
+      </div>
       <div class="needle-rot" id="needleRot">
         <div class="needle"></div>
-        <div class="needle-in"></div>
       </div>
-      <div class="hub"></div>
+      <div class="ring-lbl lbl-top">100%</div>
+      <div class="ring-lbl lbl-l">50%</div>
+      <div class="ring-lbl lbl-r">50%</div>
+      <div class="ring-lbl lbl-b">0%</div>
     </div>
     <div class="wheel-result" id="wheelRes">&nbsp;</div>
     <div class="spin-controls">
@@ -304,7 +318,7 @@
   <!-- ===== МАРКЕТ ===== -->
   <section id="p-market">
     <h2>🛒 Магазин скинов</h2>
-    <p class="muted">10 500 скинов: от 1 🪙 до 100 000 000 000 🪙. Фильтруй, сортируй, ищи.</p>
+    <p class="muted">10 500 скинов: от 1 🪙 до 100 000 000 000 🪙. Фильтруй, сортируй, ищи. M9 Bayonet | Пепел нельзя купить — только выбить из Божественного кейса или получить по промокоду.</p>
     <div class="mkt-bar">
       <select id="mktSort" onchange="mktChange()">
         <option value="desc">Сначала дороже</option>
@@ -333,8 +347,9 @@
   <!-- ===== ИНВЕНТАРЬ ===== -->
   <section id="p-inv">
     <h2>🎒 Инвентарь</h2>
-    <p class="muted">Все твои скины: купленные и выпавшие из кейсов. Можно продать за 60% цены.</p>
+    <p class="muted">Все твои скины: купленные и выпавшие из кейсов. Можно продать за 60% цены — по одному или всё сразу.</p>
     <div class="inv-sum">Скинов: <b id="invCount">0</b> · Общая стоимость: <b id="invSum">0 🪙</b></div>
+    <button class="primary" style="width:100%;margin-bottom:10px;" onclick="sellAll()">💸 ПРОДАТЬ ВСЁ</button>
     <div class="inv-grid" id="inv"></div>
     <h3 style="margin-top:18px;">🔗 Контракт</h3>
     <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин дороже суммы всех трёх, не повезёт — дешевле, но он останется у тебя.</p>
@@ -355,10 +370,14 @@
     </div>
     <div class="card">
       <h3>🔁 Трейды</h3>
-      <p class="muted">Отправь скины другому игроку по нику — он примет или отклонит.</p>
+      <p class="muted">Отправь скины или монеты другому игроку по нику — он примет или отклонит.</p>
       <div style="display:flex;gap:8px;margin:6px 0 10px;">
         <input id="tradeNick" type="text" placeholder="Ник получателя" style="flex:1;">
-        <button class="primary" onclick="sendTrade()">Отправить</button>
+        <button class="primary" onclick="sendTrade()">Скины</button>
+      </div>
+      <div style="display:flex;gap:8px;margin:0 0 10px;">
+        <input id="tradeCoins" type="text" inputmode="numeric" placeholder="Сумма монет" style="flex:1;">
+        <button class="primary" onclick="sendCoins()">Монеты</button>
       </div>
       <div class="inv-grid" id="tradeInv"></div>
       <div class="inv-sum">Выбрано: <b id="tCount">0</b> · Сумма: <b id="tSum">0 🪙</b></div>
@@ -446,6 +465,7 @@ let tradesRef = null, lbListenerOn = false, lbRows = [];
 /* ================= СОСТОЯНИЕ ================= */
 const RARE = ["Обычный","Редкий","Эпический","Легендарный","Мифический","Божественный"];
 const RARE_C = ["#888","#4a9","#a6f","#f8b","#f4a","#ffd83d"];
+const M9_ID = 10499; // единственный скин, который нельзя купить
 let S = JSON.parse(localStorage.getItem("skinup_demo_v2")||"null") ||
   { bal:1000, chance:50, wheelWin:0, wheelLose:0,
     quests:null, qDay:"", qWeek:"", clicks:0, lastClick:0,
@@ -665,6 +685,28 @@ async function sendTrade(){
     sfx("coin");
   }catch(e){ console.warn(e); toast("Ошибка отправки трейда"); }
 }
+async function sendCoins(){
+  if(!USER) return;
+  const nick = (document.getElementById("tradeNick").value||"").trim();
+  const raw = document.getElementById("tradeCoins").value||"";
+  const amount = Math.floor(String(raw).replace(/\D/g,"")) || 0;
+  if(!nick){ toast("Введи ник получателя"); return; }
+  if(amount<=0){ toast("Введи сумму монет"); return; }
+  if(S.bal<amount){ toast("Мало монет!"); return; }
+  if(S.nick && nick.toLowerCase()===S.nick.toLowerCase()){ toast("Нельзя отправить монеты самому себе"); return; }
+  try{
+    const snap = await fbDB.ref('nicks/'+encodeURIComponent(nick.toLowerCase())).get();
+    const toUid = snap.val();
+    if(!toUid){ toast("Игрок с таким ником не найден"); return; }
+    await fbDB.ref('trades/'+toUid).push({
+      from:USER.uid, fromNick:S.nick||"Игрок", coins:amount, ts:Date.now(), status:"pending"
+    });
+    addBal(-amount);
+    document.getElementById("tradeCoins").value = "";
+    toast("Отправлено "+fmt(amount)+" 🪙: "+nick);
+    sfx("coin");
+  }catch(e){ console.warn(e); toast("Ошибка отправки монет"); }
+}
 function listenTrades(){
   if(tradesRef) tradesRef.off();
   tradesRef = fbDB.ref('trades/'+USER.uid);
@@ -680,7 +722,9 @@ function renderTradesIn(list){
   const box = document.getElementById("tradesIn"); if(!box) return;
   if(!list.length){ box.innerHTML = `<p class="muted">Пока пусто.</p>`; return; }
   box.innerHTML = list.map(t=>{
-    const names = (t.items||[]).map(i=>SKINS[i] ? `${SKINS[i].em} ${SKINS[i].nm} (${fmt(SKINS[i].p)} 🪙)` : "?").join(", ");
+    const names = (typeof t.coins==="number" && t.coins>0)
+      ? `💰 ${fmt(t.coins)} 🪙`
+      : (t.items||[]).map(i=>SKINS[i] ? `${SKINS[i].em} ${SKINS[i].nm} (${fmt(SKINS[i].p)} 🪙)` : "?").join(", ");
     return `<div class="trade-in">
       <div class="tn">от ${(t.fromNick||"Игрок")}</div>
       <div class="ti">${names || "пусто"}</div>
@@ -693,11 +737,19 @@ function renderTradesIn(list){
 async function acceptTrade(tradeId){
   const snap = await fbDB.ref('trades/'+USER.uid+'/'+tradeId).get();
   const t = snap.val();
-  if(!t || !Array.isArray(t.items) || !t.items.length) return;
-  t.items.forEach(i=>S.inv.push(i));
-  save(); renderInv(); sfx("win");
+  if(!t) return;
+  const hasItems = Array.isArray(t.items) && t.items.length;
+  const hasCoins = typeof t.coins === "number" && t.coins>0;
+  if(!hasItems && !hasCoins){
+    await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
+    return;
+  }
+  if(hasItems) t.items.forEach(i=>S.inv.push(i));
+  if(hasCoins) addBal(t.coins);
+  save(); renderInv();
+  sfx(hasCoins ? "coin" : "win");
   await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
-  toast("Трейд принят!");
+  toast(hasCoins ? "Получено: +"+fmt(t.coins)+" 🪙" : "Трейд принят!");
 }
 
 async function declineTrade(tradeId){
@@ -810,18 +862,28 @@ function vib(ms){ if(vibOn() && navigator.vibrate) try{ navigator.vibrate(ms); }
 let ch = 50, spinning=false, speed=1, angle=0, turbo=false;
 let selSkins = new Set();
 function drawWheel(){
+  const winHalf = ch*0.9, winSpan = ch*1.8;
   document.getElementById("wheel").style.background =
-    `conic-gradient(#ffd83d 0 ${ch}%, #111 ${ch}% 100%)`;
+    `conic-gradient(from -${winHalf}deg, #ff9d00 0deg, #ffd83d ${winHalf}deg, ` +
+    `#ff9d00 ${winSpan}deg, #ff3b30 180deg, #ff9d00 ${360-winSpan}deg, #ff9d00 360deg)`;
+}
+function updateWheelInfo(){
+  const p = document.getElementById("wheelPct");
+  const s2 = document.getElementById("wheelSub");
+  if(!p) return;
+  p.textContent = ch+"%";
+  s2.textContent = ch>=75 ? "высокий шанс" : ch>=50 ? "средний шанс" : "низкий шанс";
+  p.style.color = ch>=75 ? "#8f8" : ch>=50 ? "#ffd83d" : "#ff6b6b";
 }
 function drawNeedle(){
   document.getElementById("needleRot").style.transform = `rotate(${angle}deg)`;
 }
-drawWheel(); drawNeedle();
+drawWheel(); drawNeedle(); updateWheelInfo();
 document.getElementById("chances").addEventListener("click", e=>{
   if(!e.target.dataset.ch) return;
   ch = +e.target.dataset.ch;
   document.querySelectorAll("#chances button").forEach(b=>b.classList.toggle("on", b===e.target));
-  drawWheel();
+  drawWheel(); updateWheelInfo();
 });
 function spin(){
   if(spinning) return;
@@ -829,9 +891,10 @@ function spin(){
   if(!staked.length){ toast("Выбери скины для крутки!"); return; }
   spinning=true; speed=1;
   const win = Math.random()*100 < ch;
-  const half = ch*1.8;
+  // стрелка внизу: 0 = низ (проигрыш), 180 = верх (центр выигрыша)
+  const jitter = win ? (Math.random()-0.5)*1.2*ch : (Math.random()-0.5)*1.6*(100-ch);
+  const delta = (win ? 180 : 0) + jitter;
   const base = angle + 360*(4+Math.random()*3);
-  const delta = win ? half : 180 + half;
   const target = Math.ceil((base - delta)/360)*360 + delta;
   sfx("click"); vib(15);
   animateSpin(target, ()=>{
@@ -1103,9 +1166,11 @@ function renderMarket(){
     `<div class="skin"><div class="em">${s.em}</div><div>${s.nm}</div>
      <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
      <div class="prc">${fmt(s.p)} 🪙</div>
-     <button class="primary" onclick="buySkin(${s.i})">Купить</button></div>`).join("");
+     ${s.i===M9_ID ? `<button disabled>Нет в наличии</button>`
+                   : `<button class="primary" onclick="buySkin(${s.i})">Купить</button>`}</div>`).join("");
 }
 function buySkin(i){
+  if(i===M9_ID){ toast("Нет в наличии — только из Божественного кейса или по промокоду"); return; }
   const s = SKINS[i];
   if(S.bal<s.p){ toast("Мало монет!"); return; }
   addBal(-s.p); S.inv.push(i); save();
@@ -1137,6 +1202,17 @@ function sellSkin(k){
   addBal(Math.floor(s.p*0.6));
   sfx("coin"); vib(20);
   toast("Продано: +"+fmt(Math.floor(s.p*0.6))+" 🪙");
+  save(); renderInv();
+}
+function sellAll(){
+  if(!S.inv.length){ toast("Инвентарь пуст"); return; }
+  const cnt = S.inv.length;
+  const total = Math.floor(S.inv.reduce((a,i)=>a+(SKINS[i]?SKINS[i].p:0),0)*0.6);
+  S.inv = [];
+  selSkins.clear(); contractSel.clear(); tradeSel.clear();
+  addBal(total);
+  sfx("coin"); vib(20);
+  toast("Продано "+cnt+" скинов: +"+fmt(total)+" 🪙");
   save(); renderInv();
 }
 
