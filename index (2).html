@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
+<!-- ============================================================
+  FIREBASE_CONFIG — вставь сюда конфиг своего проекта Firebase,
+  чтобы топ-10 показывал реальных игроков. Пока пусто — демо-режим.
+const FIREBASE_CONFIG = {
+  // apiKey: "ТВОЙ_API_KEY",
+  // databaseURL: "https://ТВОЙ_ПРОЕКТ.firebaseio.com",
+  // projectId: "ТВОЙ_ПРОЕКТ"
+};
+============================================================ -->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:#0d0d14; color:#eee;
+         padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
+  header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
+           display:flex; justify-content:space-between; align-items:center;
+           border-bottom:2px solid #ffd83d; }
+  header .logo { font-weight:900; font-size:20px; color:#ffd83d; letter-spacing:1px; }
+  header .balance { font-weight:700; color:#ffd83d; background:#222; padding:6px 12px; border-radius:20px; }
+  main { padding:14px; }
+  section { display:none; }
+  section.active { display:block; }
+  h2 { margin:14px 0 10px; font-size:18px; }
+  h3 { font-size:15px; margin-bottom:8px; }
+  .muted { color:#888; font-size:13px; margin-bottom:12px; }
+  .card { background:#181824; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:14px; }
+  button { font-family:inherit; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
+           cursor:pointer; background:#2a2a3a; color:#fff; }
+  button:active { transform:scale(.97); }
+  button.primary { background:#ffd83d; color:#111; }
+  button:disabled { opacity:.4; cursor:default; }
+  .chances { display:flex; gap:8px; margin:10px 0; }
+  .chances button { flex:1; }
+  .chances button.on { background:#ffd83d; color:#111; outline:2px solid #fff; }
+
+  /* ===== 1. КОЛЕСО: колесо стоит, стрелка бежит по его краю ===== */
+  .wheel-wrap { position:relative; width:280px; height:280px; margin:16px auto; }
+  .wheel { position:absolute; inset:0; border-radius:50%;
+           border:6px solid #333; background:#111; }
+  .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
+  .needle { position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+            width:0; height:0; z-index:5;
+            /* красный треугольник: остриём вниз, к ободу колеса */
+            border-left:13px solid transparent;
+            border-right:13px solid transparent;
+            border-top:38px solid #e63946;
+            filter:drop-shadow(0 2px 3px rgba(0,0,0,.7));
+            pointer-events:none; }
+  .needle-in { position:absolute; top:-2px; left:50%; transform:translateX(-50%);
+            width:0; height:0; z-index:6; pointer-events:none;
+            border-left:8px solid transparent;
+            border-right:8px solid transparent;
+            border-top:28px solid #14141f; }
+  .hub { position:absolute; left:50%; top:50%; width:16px; height:16px; margin:-8px 0 0 -8px;
+         border-radius:50%; background:#222; border:2px solid #555; z-index:6; }
+  .wheel-result { text-align:center; font-weight:800; font-size:18px; min-height:26px; margin-top:6px; }
+  .spin-controls { display:flex; gap:8px; }
+  .spin-controls button { flex:1; }
+  .spin-controls .bolt { max-width:110px; font-size:20px; background:#2a2a3a; }
+  .spin-controls .bolt.on { background:#ffd83d; color:#111; }
+
+  /* ===== 2. КЕЙСЫ ===== */
+  .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .case-card { background:#181824; border:1px solid #2a2a3a; border-radius:12px;
+               padding:8px 4px; text-align:center; cursor:pointer; transition:.15s; }
+  .case-card.sel { border-color:#ffd83d; background:#2a2410; transform:translateY(-3px); }
+  .case-card .em { font-size:26px; }
+  .case-card .nm { font-size:10.5px; font-weight:700; margin-top:3px; }
+  .case-card .pr { font-size:10px; color:#ffd83d; }
+  .case-card .mx { font-size:9px; color:#888; }
+  @media (max-width:420px){ .case-card .nm{font-size:9px;} .case-card .em{font-size:22px;} }
+  .case-qty { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0; }
+  .case-qty button { width:40px; height:40px; border-radius:50%; font-size:20px; }
+
+  /* ЛЕНТЫ ОТКРЫТИЯ КЕЙСОВ */
+  .tapes-ov { position:fixed; inset:0; background:rgba(5,5,10,.96); z-index:60;
+              display:none; flex-direction:column; padding:14px; overflow-y:auto; }
+  .tapes-ov.show { display:flex; }
+  .tapes-ov h3 { text-align:center; color:#ffd83d; margin:6px 0 10px; }
+  .tape { position:relative; height:92px; overflow:hidden; background:#0f0f18;
+          border:1px solid #2a2a3a; border-radius:12px; margin-bottom:10px; }
+  .tape .strip { position:absolute; top:0; left:0; height:100%; display:flex; align-items:center; will-change:transform; }
+  .titem { flex:0 0 104px; margin-right:6px; height:80px; background:#181824; border:1px solid #2a2a3a;
+           border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+           font-size:10px; text-align:center; }
+  .titem .em { font-size:26px; line-height:1.1; }
+  .titem .nm { font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:96px; }
+  .titem .pr { font-size:9.5px; color:#ffd83d; font-weight:700; }
+  .tape .marker { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px;
+                  background:#ffd83d; box-shadow:0 0 10px #ffd83d; z-index:3; }
+  .tape::before, .tape::after { content:""; position:absolute; top:0; bottom:0; width:70px; z-index:2; pointer-events:none; }
+  .tape::before { left:0; background:linear-gradient(90deg,#0f0f18,transparent); }
+  .tape::after { right:0; background:linear-gradient(270deg,#0f0f18,transparent); }
+  .tape.done { border-color:#ffd83d; }
+  .tapes-res { text-align:center; font-weight:800; min-height:22px; margin:4px 0 10px; color:#ffd83d; }
+
+  /* ===== МАРКЕТ ===== */
+  .mkt-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .mkt-bar select, .mkt-bar input { background:#181824; color:#eee; border:1px solid #2a2a3a;
+           border-radius:10px; padding:9px 10px; font-family:inherit; font-size:13px; }
+  .mkt-bar input { flex:1; min-width:140px; }
+  .mkt-nav { display:flex; align-items:center; justify-content:center; gap:12px; margin:12px 0; font-size:13px; }
+  .mkt-nav button { padding:8px 14px; }
+  .shop-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .skin { background:#181824; border:1px solid #2a2a3a; border-radius:10px; padding:10px 6px;
+          text-align:center; font-size:12px; }
+  .skin .em { font-size:28px; }
+  .skin .r { font-size:10px; }
+  .skin button { margin-top:6px; padding:5px 8px; font-size:11px; }
+  .skin.sel { border-color:#ffd83d; background:#2a2410; outline:2px solid #ffd83d; }
+
+  /* ===== ИНВЕНТАРЬ ===== */
+  .inv-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .inv-sum { font-size:14px; margin-bottom:10px; }
+  .inv-sum b { color:#ffd83d; }
+
+  /* ===== 3. ПРОФИЛЬ ===== */
+  .lb { width:100%; border-collapse:collapse; font-size:13px; }
+  .lb td { padding:7px 6px; border-bottom:1px solid #222; }
+  .lb tr.me td { background:#2a2410; color:#ffd83d; font-weight:700; }
+  .lb .num { width:28px; color:#888; }
+  .lb .coins { text-align:right; color:#ffd83d; font-weight:600; }
+  .quest { display:flex; justify-content:space-between; align-items:center; gap:8px;
+           padding:9px 0; border-bottom:1px solid #222; }
+  .quest .info { flex:1; }
+  .quest .nm { font-size:13.5px; font-weight:600; }
+  .quest .bar { height:6px; background:#222; border-radius:4px; margin-top:5px; overflow:hidden; }
+  .quest .bar i { display:block; height:100%; background:#ffd83d; }
+  .quest .rw { font-size:11px; color:#8f8; margin-top:3px; }
+  .quest button { padding:6px 10px; font-size:12px; }
+  .tag { font-size:10px; background:#2a2a3a; border-radius:8px; padding:2px 7px; margin-left:6px; }
+  .tag.d { background:#1a2a3a; color:#7ec8ff; } .tag.w { background:#3a1a2a; color:#ff9ecb; }
+
+  /* АВТОКЛИКЕР */
+  .clicker-wrap { text-align:center; }
+  .click-circle { width:110px; height:110px; border-radius:50%; margin:14px auto;
+                  background:radial-gradient(circle at 35% 30%, #ffe98a, #ffd83d 60%, #d9a800);
+                  box-shadow:0 0 25px rgba(255,216,61,.5), inset 0 -6px 14px rgba(0,0,0,.25);
+                  border:4px solid #a87d00; font-size:44px; line-height:102px;
+                  cursor:pointer; user-select:none; touch-action:manipulation; }
+  .click-circle:active { transform:scale(.93); }
+  .click-info { font-size:12.5px; color:#bbb; }
+  .click-info b { color:#ffd83d; }
+  .click-warn { color:#ff6b6b; font-weight:700; font-size:13px; min-height:18px; margin-top:4px; }
+
+  /* ===== 4. ЕЩЁ ===== */
+  .set-row { display:flex; justify-content:space-between; align-items:center;
+             padding:11px 0; border-bottom:1px solid #222; font-size:14px; }
+  .switch { width:46px; height:26px; border-radius:14px; background:#333; position:relative; cursor:pointer; }
+  .switch.on { background:#ffd83d; }
+  .switch i { position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%;
+              background:#fff; transition:.2s; }
+  .switch.on i { left:23px; }
+  .danger { background:#a02020; width:100%; margin-top:8px; }
+
+  nav { position:fixed; bottom:0; left:0; right:0; background:#14141f;
+        border-top:2px solid #2a2a3a; display:flex; z-index:20; }
+  nav button { flex:1; background:none; border:none; border-radius:0; padding:9px 2px 11px;
+               font-size:10px; color:#888; font-weight:700; }
+  nav button .ic { display:block; font-size:18px; }
+  nav button.on { color:#ffd83d; border-top:3px solid #ffd83d; }
+  .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
+           background:#ffd83d; color:#111; padding:10px 18px; border-radius:22px;
+           font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .prc { color:#ffd83d; }
+
+  /* ===== СВЕТЛАЯ ТЕМА ===== */
+  body.light { background:#eef0f5; color:#1c1c28; }
+  body.light header { background:#fff; border-bottom-color:#e0a800; }
+  body.light header .logo, body.light header .balance { color:#b8860b; }
+  body.light header .balance { background:#f2f2f7; }
+  body.light .card, body.light .skin, body.light .case-card,
+  body.light .mkt-bar select, body.light .mkt-bar input,
+  body.light nav, body.light .switch { background:#fff; border-color:#d9dce3; }
+  body.light nav { border-top-color:#d9dce3; }
+  body.light .card, body.light .skin, body.light .case-card { color:#1c1c28; }
+  body.light .muted { color:#666; }
+  body.light .lb td, body.light .quest, body.light .set-row { border-bottom-color:#e4e6ec; }
+  body.light .lb tr.me td { background:#fff6d6; color:#8a6d00; }
+  body.light .tag { background:#eceef3; color:#555; }
+  body.light .prc, body.light .case-card .pr, body.light .tapes-res { color:#b8860b; }
+  body.light .case-card .mx { color:#777; }
+  body.light .titem, body.light .tape { background:#f7f8fb; border-color:#d9dce3; }
+  body.light .titem .pr { color:#777; }
+  body.light .tape::before { background:linear-gradient(90deg,#f7f8fb,transparent); }
+  body.light .tape::after { background:linear-gradient(270deg,#f7f8fb,transparent); }
+  body.light .wheel { border-color:#c9ccd4; }
+  body.light .hub { background:#e8e8ee; border-color:#aaa; }
+  body.light .needle-in { border-top-color:#fff; }
+  body.light .spin-controls .bolt { background:#e8e8ee; color:#333; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SKINUP</div>
+  <div class="balance">🪙 <span id="bal">0</span></div>
+</header>
+<main>
+  <div class="toast" id="toast"></div>
+
+  <!-- ===== АПГРЕЙД ===== -->
+  <section id="p-upgrade" class="active">
+    <h2>🎡 Колесо апгрейда</h2>
+    <p class="muted">Выбери шанс — жёлтый сектор равен твоему шансу. Колесо стоит на месте, стрелка бежит по его краю: где остановится — жёлтый или чёрный, такой и результат.</p>
+    <div class="chances" id="chances">
+      <button data-ch="35">35%</button>
+      <button data-ch="50" class="on">50%</button>
+      <button data-ch="75">75%</button>
+    </div>
+    <div class="wheel-wrap">
+      <div class="wheel" id="wheel"></div>
+      <div class="needle-rot" id="needleRot">
+        <div class="needle"></div>
+        <div class="needle-in"></div>
+      </div>
+      <div class="hub"></div>
+    </div>
+    <div class="wheel-result" id="wheelRes">&nbsp;</div>
+    <div class="spin-controls">
+      <button class="primary" id="btnSpin" onclick="spin()">КРУТИТЬ</button>
+      <button class="bolt" id="btnBolt" onclick="boost()">⚡</button>
+    </div>
+    <p class="muted" style="margin-top:8px;">⚡ работает всегда: во время прокрутки — ускоряет колесо, в кейсах — включает турбо-режим лент.</p>
+    <h3>Скины на прокрутку</h3>
+    <p class="muted">Нажми на скин — он выделится жёлтой рамкой. Выбранные скины крутятся все вместе: при выигрыше каждый из них заменяется на более дорогой, при проигрыше — сгорает. Положил 2 — получил 2, положил 10 — получил 10.</p>
+    <div class="inv-grid" id="upgInv"></div>
+    <button style="width:100%;margin-top:8px;" onclick="clearUpgSel()">Снять выделение</button>
+  </section>
+
+  <!-- ===== КЕЙСЫ ===== -->
+  <section id="p-cases">
+    <h2>📦 Кейсы</h2>
+    <p class="muted">Выбери кейс, укажи количество — до 10 за раз. Откроешь — увидишь ленты прокрутки друг под другом.</p>
+    <div class="cases-grid" id="casesGrid"></div>
+    <div class="card" style="margin-top:12px;">
+      <h3 id="cpTitle">👀 Что может выпасть</h3>
+      <div class="muted" id="cpInfo"></div>
+      <div class="shop-grid" id="cpGrid"></div>
+      <div class="mkt-nav" id="cpNav" style="display:none;">
+        <button onclick="cpPageF(-1)">‹ Назад</button><span id="cpPageInfo"></span><button onclick="cpPageF(1)">Вперёд ›</button>
+      </div>
+      <button style="width:100%;margin-top:8px;" onclick="toggleCpAll()">Показать всё содержимое</button>
+    </div>
+    <div class="case-qty">
+      <button onclick="chgQty(-1)">−</button>
+      <span id="qty">1</span> шт (до 10)
+      <button onclick="chgQty(1)">+</button>
+    </div>
+    <p style="text-align:center;margin-bottom:10px;">Итого: <b id="total" style="color:#ffd83d">100</b> монет</p>
+    <button class="primary" style="width:100%" onclick="openCases()">ОТКРЫТЬ КЕЙСЫ</button>
+  </section>
+
+  <!-- ===== МАРКЕТ ===== -->
+  <section id="p-market">
+    <h2>🛒 Магазин скинов</h2>
+    <p class="muted">10 500 скинов: от 1 🪙 до 100 000 000 000 🪙. Фильтруй, сортируй, ищи.</p>
+    <div class="mkt-bar">
+      <select id="mktSort" onchange="mktChange()">
+        <option value="desc">Сначала дороже</option>
+        <option value="asc">Сначала дешевле</option>
+        <option value="rnd">Случайно</option>
+      </select>
+      <select id="mktRare" onchange="mktChange()">
+        <option value="-1">Все редкости</option>
+        <option value="0">Обычные</option>
+        <option value="1">Редкие</option>
+        <option value="2">Эпические</option>
+        <option value="3">Легендарные</option>
+        <option value="4">Мифические</option>
+        <option value="5">Божественные</option>
+      </select>
+      <input id="mktSearch" placeholder="Поиск скина…" oninput="mktChange()">
+    </div>
+    <div class="mkt-nav">
+      <button onclick="mktPage(-1)">‹ Назад</button>
+      <span id="mktPageInfo">1 / 1</span>
+      <button onclick="mktPage(1)">Вперёд ›</button>
+    </div>
+    <div class="shop-grid" id="shop"></div>
+  </section>
+
+  <!-- ===== ИНВЕНТАРЬ ===== -->
+  <section id="p-inv">
+    <h2>🎒 Инвентарь</h2>
+    <p class="muted">Все твои скины: купленные и выпавшие из кейсов. Можно продать за 60% цены.</p>
+    <div class="inv-sum">Скинов: <b id="invCount">0</b> · Общая стоимость: <b id="invSum">0 🪙</b></div>
+    <div class="inv-grid" id="inv"></div>
+    <h3 style="margin-top:18px;">🔗 Контракт</h3>
+    <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин немного дороже суммы всех трёх, не повезёт — дешевле, но он останется у тебя.</p>
+    <div class="inv-grid" id="contractInv"></div>
+    <div class="inv-sum">Выбрано: <b id="cCount">0</b>/3 · Сумма: <b id="cSum">0 🪙</b></div>
+    <button class="primary" style="width:100%" onclick="makeContract()">ЗАКЛЮЧИТЬ КОНТРАКТ</button>
+    <div class="wheel-result" id="contractRes">&nbsp;</div>
+  </section>
+
+  <!-- ===== ПРОФИЛЬ ===== -->
+  <section id="p-profile">
+    <h2>👤 Профиль</h2>
+    <div class="card">
+      <div id="top10wrap"><h3>🏆 Топ-10 игроков</h3></div>
+      <table class="lb" id="lb"></table>
+      <p class="muted" style="margin-top:8px;font-size:11px;" id="lbNote">Демо-режим: данные только на этом устройстве.</p>
+    </div>
+    <div class="card">
+      <h3>🎟 Промокод</h3>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <input id="promoInput" placeholder="Введи промокод…" style="flex:1;background:var(--card2,#1c1c24);border:1px solid var(--line,#333);color:inherit;padding:8px 10px;border-radius:8px;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')applyPromo()">
+        <button onclick="applyPromo()">Активировать</button>
+      </div>
+      <div id="promoMsg" class="muted" style="margin-top:6px;font-size:12px;">&nbsp;</div>
+    </div>
+    <div class="card">
+      <h3>📋 Задания</h3>
+      <p class="muted">Ежедневные обновляются каждый день, еженедельные — каждую неделю.</p>
+      <div id="quests"></div>
+    </div>
+    <div class="card">
+      <h3>💰 Автокликер</h3>
+      <div class="clicker-wrap">
+        <div class="click-circle" id="clickCircle">🪙</div>
+        <div class="click-info">За клик: <b>+2</b> 🪙 · Кликов: <b id="clickCount">0</b></div>
+        <div class="click-warn" id="clickWarn"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ЕЩЁ ===== -->
+  <section id="p-more">
+    <h2>⚙️ Настройки аккаунта</h2>
+    <div class="card">
+      <div class="set-row"><span>🙂 Ник</span><span id="nickName" data-nick="Гость" data-av="🙂" style="cursor:pointer" onclick="changeNick()">🙂 Гость</span></div>
+      <div class="set-row"><span>🖼 Аватар</span><button onclick="changeAvatar()">Сменить</button></div>
+      <div class="set-row"><span>🚪 Выход</span><button onclick="logout()">Выйти</button></div>
+    </div>
+    <h2>⚙️ Настройки игры</h2>
+    <div class="card">
+      <div class="set-row"><span>🔊 Звуки</span><div class="switch on" id="swSound" onclick="tog('swSound')"><i></i></div></div>
+      <div class="set-row"><span>📳 Вибрация</span><div class="switch" id="swVibro" onclick="tog('swVibro')"><i></i></div></div>
+      <div class="set-row"><span>⚡ Быстрое открытие кейсов</span><div class="switch on" id="swFast" onclick="tog('swFast')"><i></i></div></div>
+      <div class="set-row"><span>🌙 Тёмная тема</span><div class="switch on" id="swTheme" onclick="tog('swTheme')"><i></i></div></div>
+      <button class="danger" onclick="resetAll()">Сбросить прогресс</button>
+    </div>
+  </section>
+</main>
+
+<!-- ===== ОВЕРЛЕЙ ЛЕНТ КЕЙСОВ ===== -->
+<div class="tapes-ov" id="tapesOv">
+  <h3 id="tapesTitle">📦 Открытие кейсов</h3>
+  <div id="tapesBox"></div>
+  <div class="tapes-res" id="tapesRes"></div>
+  <button class="primary" id="tapesClose" style="display:none;margin:0 auto;max-width:280px;" onclick="closeTapes()">ЗАБРАТЬ</button>
+</div>
+
+<nav>
+  <button class="on" data-p="p-upgrade"><span class="ic">🎡</span>Апгрейд</button>
+  <button data-p="p-cases"><span class="ic">📦</span>Кейсы</button>
+  <button data-p="p-market"><span class="ic">🛒</span>Маркет</button>
+  <button data-p="p-inv"><span class="ic">🎒</span>Инвентарь</button>
+  <button data-p="p-profile"><span class="ic">👤</span>Профиль</button>
+  <button data-p="p-more"><span class="ic">⚙️</span>Ещё</button>
+</nav>
+
+<script>
+/* ================= СОСТОЯНИЕ ================= */
+const RARE = ["Обычный","Редкий","Эпический","Легендарный","Мифический","Божественный"];
+const RARE_C = ["#888","#4a9","#a6f","#f8b","#f4a","#ffd83d"];
+let S = JSON.parse(localStorage.getItem("skinup_demo_v2")||"null") ||
+  { bal:1000, chance:50, wheelWin:0, wheelLose:0,
+    quests:null, qDay:"", qWeek:"", clicks:0, lastClick:0,
+    caseOpened:0, contracts:0, upgrades:0, spent:0, inv:[] };
+S.inv = S.inv || [];
+function save(){ localStorage.setItem("skinup_demo_v2", JSON.stringify(S)); }
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t;
+  el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1600); }
+function addBal(n){ S.bal=Math.max(0,S.bal+n); document.getElementById("bal").textContent=S.bal; save(); }
+function fmt(n){ return n.toLocaleString("ru-RU"); }
+
+/* ================= ЗВУКИ (WebAudio, синтез) ================= */
+let AC=null, MASTER=null, NOISEBUF=null;
+function ac(){
+  if(!AC){
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    const comp = AC.createDynamicsCompressor();
+    comp.threshold.value=-16; comp.ratio.value=5; comp.knee.value=20;
+    MASTER = AC.createGain(); MASTER.gain.value=0.85;
+    MASTER.connect(comp); comp.connect(AC.destination);
+    // общий буфер белого шума — для щелчков, «вжуха» и ударов
+    NOISEBUF = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate);
+    const d = NOISEBUF.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  }
+  return AC;
+}
+document.addEventListener("pointerdown", ()=>{ try{ ac().resume(); }catch(e){} }, {once:true});
+function soundOn(){ return document.getElementById("swSound").classList.contains("on"); }
+
+function tone(freq,dur,type,vol,when,slide){
+  const ctx=ac(), t=ctx.currentTime+(when||0);
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type||"sine"; o.frequency.setValueAtTime(freq,t);
+  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,freq+slide),t+dur);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol,t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(MASTER); o.start(t); o.stop(t+dur+0.05);
+}
+function noiseHit(when,dur,vol,freq,q){
+  const ctx=ac(), t=ctx.currentTime+(when||0);
+  const src=ctx.createBufferSource(); src.buffer=NOISEBUF; src.loop=true;
+  const f=ctx.createBiquadFilter(); f.type="bandpass"; f.frequency.value=freq; f.Q.value=q||1;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol,t+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  src.connect(f); f.connect(g); g.connect(MASTER);
+  src.start(t); src.stop(t+dur+0.05);
+}
+let tickFlip=0;
+function sfx(kind){
+  if(!soundOn()) return;
+  try{
+    if(kind==="tick"){ // трещотка: сухой щелчок + короткий деревянный тон, чередуем высоту
+      tickFlip^=1;
+      noiseHit(0,0.02,0.05,2600+tickFlip*380,2);
+      tone(1850+tickFlip*260,0.035,"triangle",0.05);
+    }
+    else if(kind==="click"){ tone(540,0.06,"sine",0.07); tone(1080,0.045,"sine",0.035,0.012); }
+    else if(kind==="coin"){ tone(988,0.08,"sine",0.09); tone(1480,0.14,"sine",0.09,0.05); tone(1976,0.2,"sine",0.05,0.09); }
+    else if(kind==="stop"){ // тяжёлый «тук» замка + лёгкий металлический отклик
+      tone(150,0.13,"sine",0.17,0,-70);
+      noiseHit(0,0.05,0.07,900,1.5);
+      tone(1050,0.09,"sine",0.05,0.015);
+    }
+    else if(kind==="win"){ [523,659,784,1047,1319].forEach((f,i)=>{ tone(f,0.26,"triangle",0.08,i*0.08); tone(f/2,0.26,"sine",0.045,i*0.08); }); }
+    else if(kind==="lose"){ tone(330,0.28,"sine",0.09,0,-120); tone(250,0.4,"sine",0.08,0.13,-130); }
+    else if(kind==="open"){ // открытие кейса: щелчок замка, глухой удар крышки, нарастающий свист
+      noiseHit(0,0.03,0.11,3600,2);
+      tone(110,0.18,"sine",0.2,0.02,-45);
+      noiseHit(0.03,0.06,0.06,1500,1.4);
+    }
+  }catch(e){}
+}
+
+/* easing ленты = CSS cubic-bezier(.08,.7,.1,1):
+   f(t)=время, g(t)=пройденный путь */
+function bezF(t){ return 3*(1-t)*(1-t)*t*0.08 + 3*(1-t)*t*t*0.1 + t*t*t; }
+function bezG(t){ return 3*(1-t)*(1-t)*t*0.7  + 3*(1-t)*t*t*1.0 + t*t*t; }
+function timeForFrac(p,dur){ // момент времени, когда лента прошла долю p пути
+  let lo=0,hi=1;
+  for(let i=0;i<28;i++){ const m=(lo+hi)/2; if(bezG(m)<p) lo=m; else hi=m; }
+  return bezF(lo)*dur;
+}
+function tapeTickTimes(dur,target,step){ // расписание тиков трещотки по easing ленты
+  const count=Math.max(1,Math.floor(target/step)), out=[];
+  for(let k=1;k<=count;k++) out.push(timeForFrac(k/count,dur));
+  return out;
+}
+
+/* «вжух» прокрутки: шум с фильтром, громкость следует за скоростью лент */
+let WHOOSH=null;
+function whooshStart(totalDur){
+  whooshStop();
+  if(!soundOn()) return;
+  try{
+    const ctx=ac(), t=ctx.currentTime;
+    const src=ctx.createBufferSource(); src.buffer=NOISEBUF; src.loop=true;
+    const f=ctx.createBiquadFilter(); f.type="lowpass"; f.Q.value=0.7;
+    f.frequency.setValueAtTime(1500,t);
+    f.frequency.exponentialRampToValueAtTime(480,t+totalDur);
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.0001,t);
+    const PTS=14;
+    for(let i=1;i<=PTS;i++){
+      const p=bezG(i/PTS);
+      const speed=Math.max(0.05, 1-p); // скорость = остаток пути
+      g.gain.linearRampToValueAtTime(Math.max(0.012, 0.11*speed*speed), t+(i/PTS)*totalDur);
+    }
+    g.gain.linearRampToValueAtTime(0.0001, t+totalDur+0.25);
+    src.connect(f); f.connect(g); g.connect(MASTER);
+    src.start(t);
+    WHOOSH={src,g};
+  }catch(e){}
+}
+function whooshStop(){
+  if(WHOOSH){ try{
+    WHOOSH.g.gain.cancelScheduledValues(AC.currentTime);
+    WHOOSH.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.05);
+    WHOOSH.src.stop(AC.currentTime+0.3);
+  }catch(e){} WHOOSH=null; }
+}
+
+/* ================= ВИБРАЦИЯ ================= */
+function vibOn(){ return document.getElementById("swVibro").classList.contains("on"); }
+function vib(ms){ if(vibOn() && navigator.vibrate) try{ navigator.vibrate(ms); }catch(e){} }
+
+/* ================= 1. КОЛЕСО ================= */
+let ch = 50, spinning=false, speed=1, angle=0, turbo=false;
+let selSkins = new Set(); // позиции выбранных скинов в invView
+function drawWheel(){
+  document.getElementById("wheel").style.background =
+    `conic-gradient(#ffd83d 0 ${ch}%, #111 ${ch}% 100%)`;
+}
+function drawNeedle(){
+  document.getElementById("needleRot").style.transform = `rotate(${angle}deg)`;
+}
+drawWheel(); drawNeedle();
+document.getElementById("chances").addEventListener("click", e=>{
+  if(!e.target.dataset.ch) return;
+  ch = +e.target.dataset.ch;
+  document.querySelectorAll("#chances button").forEach(b=>b.classList.toggle("on", b===e.target));
+  drawWheel();
+});
+function spin(){
+  if(spinning) return;
+  const staked = [...selSkins].map(k=>invView[k]).filter(Boolean);
+  if(!staked.length){ toast("Выбери скины для крутки!"); return; }
+  spinning=true; speed=1;
+  const win = Math.random()*100 < ch;
+  const half = ch*1.8; // половина ширины жёлтого сектора в градусах
+  const base = angle + 360*(4+Math.random()*3);
+  const delta = win ? half : 180 + half;
+  const target = Math.ceil((base - delta)/360)*360 + delta;
+  sfx("click"); vib(15);
+  animateSpin(target, ()=>{
+    const res = document.getElementById("wheelRes");
+    if(win){
+      // множитель цены: 35% -> x2.5, 50% -> x2, 75% -> x1.5
+      const mult = ch===35 ? 2.5 : ch===50 ? 2 : 1.5;
+      const upgraded = [];
+      staked.forEach(s=>{
+        const pos = S.inv.indexOf(s.i);
+        if(pos>-1) S.inv.splice(pos,1);
+        const ns = nearestSkin(s.p*mult); // ближайший по цене — точное попадание
+        S.inv.push(ns.i); upgraded.push(ns);
+      });
+      res.innerHTML = "✅ Апгрейд! " + (upgraded.length<=3 ?
+        upgraded.map(s=>`<span style="color:${RARE_C[s.r]}">${s.nm}</span>`).join(", ")
+        : `${upgraded.length} скинов на ${fmt(upgraded.reduce((a,s)=>a+s.p,0))} 🪙`);
+      res.style.color = "#8f8";
+      S.upgrades++; bumpQuest("upgrades",1);
+      sfx("win"); vib([30,60,30]);
+    } else {
+      staked.forEach(s=>{ const pos=S.inv.indexOf(s.i); if(pos>-1) S.inv.splice(pos,1); });
+      res.textContent = `💀 Проигрыш — сгорело скинов: ${staked.length}`;
+      res.style.color = "#ff6b6b";
+      S.wheelLose++;
+      sfx("lose"); vib(120);
+    }
+    save(); spinning=false;
+    selSkins.clear(); updateSpinBtn(); renderInv();
+  });
+}
+function animateSpin(target, done){
+  const n = document.getElementById("needleRot");
+  let last = performance.now(), lastTick = angle, finished = false;
+  const finish = ()=>{ if(finished) return; finished=true; angle=target; drawNeedle(); done(); };
+  const safety = setTimeout(finish, 20000); // если вкладка заморозила анимацию — всё равно завершаем
+  function step(now){
+    if(finished) return;
+    const dt=(now-last)/1000; last=now;
+    angle += dt*360*2*speed;
+    n.style.transform = `rotate(${angle}deg)`;
+    if(angle-lastTick > 22){ lastTick = angle; sfx("tick"); vib(4); }
+    if(angle >= target){ clearTimeout(safety); finish(); return; }
+    const left = target-angle;
+    speed = left < 360 ? Math.max(0.5, left/720+0.5) : speed;
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+/* Молния работает ВСЕГДА: во время прокрутки — ускоряет, вне её — турбо для кейсов */
+function boost(){
+  if(spinning){ speed = Math.min(30, speed+3); toast("⚡ Ускорение ×"+speed.toFixed(0)); return; }
+  turbo = !turbo;
+  document.getElementById("btnBolt").classList.toggle("on", turbo);
+  document.getElementById("swFast").classList.toggle("on", turbo);
+  saveSettings();
+  toast(turbo ? "⚡ Турбо: кейсы крутятся быстро" : "⚡ Турбо выключено");
+}
+
+/* ================= 2. КЕЙСЫ ================= */
+const CASES = [
+  {em:"📦", nm:"Стартовый",    pr:100,       lo:1,       hi:1000},
+  {em:"🥉", nm:"Бронзовый",    pr:1000,      lo:50,      hi:5000},
+  {em:"🥈", nm:"Серебряный",   pr:10000,     lo:500,     hi:30000},
+  {em:"🥇", nm:"Золотой",      pr:50000,     lo:2000,    hi:100000},
+  {em:"💠", nm:"Платиновый",   pr:100000,    lo:5000,    hi:200000},
+  {em:"♦️", nm:"Рубиновый",    pr:500000,    lo:20000,   hi:800000},
+  {em:"👑", nm:"Королевский",  pr:1000000,   lo:50000,   hi:2000000},
+  {em:"🌌", nm:"Космический",  pr:10000000,  lo:500000,  hi:20000000},
+  {em:"🐉", nm:"Драконий",     pr:100000000, lo:5000000, hi:200000000},
+  {em:"✨", nm:"Божественный", pr:500000000, lo:20000000,hi:100000000000}
+];
+let selCase = 0, qty = 1, opening = false, caseTimers = [];
+function casePool(ci){
+  const c = CASES[ci];
+  const pool = SKINS.filter(s=>s.p>=c.lo && s.p<=c.hi);
+  return pool.length ? pool : SKINS.slice(0,500);
+}
+function renderCases(){
+  document.getElementById("casesGrid").innerHTML = CASES.map((c,i)=>
+    `<div class="case-card ${i===selCase?"sel":""}" onclick="pickCase(${i})">
+      <div class="em">${c.em}</div><div class="nm">${c.nm}</div>
+      <div class="pr">${fmt(c.pr)} 🪙</div><div class="mx">до ${fmt(c.hi)}</div></div>`).join("");
+  updTotal();
+}
+function pickCase(i){ selCase=i; cpAll=false; cpPage=0; vib(12); sfx("click"); renderCases(); renderCasePreview(); }
+function chgQty(d){ qty = Math.min(10, Math.max(1, qty+d)); vib(8);
+  document.getElementById("qty").textContent = qty; updTotal(); }
+function updTotal(){ document.getElementById("total").textContent = fmt(CASES[selCase].pr*qty); }
+function openCases(){
+  if(opening) return;
+  const cost = CASES[selCase].pr*qty;
+  if(S.bal<cost){ toast("Мало монет!"); return; }
+  addBal(-cost); S.caseOpened+=qty; S.spent+=cost;
+  bumpQuest("cases",qty);
+  save();
+  const pool = casePool(selCase);
+  const winners = [];
+  for(let k=0;k<qty;k++){
+    // дешёвое падает чаще: куб случайного числа смещает к началу пула
+    winners.push(pool[Math.floor(Math.pow(Math.random(),3)*pool.length)]);
+  }
+  showTapes(winners);
+}
+function tapeItem(s, hl){
+  return `<div class="titem" ${hl?'style="border-color:#ffd83d;background:#2a2410"':''}>
+    <div class="em">${s.em}</div><div class="nm">${s.nm}</div>
+    <div class="pr" style="color:${RARE_C[s.r]}">${fmt(s.p)} 🪙</div></div>`;
+}
+function showTapes(winners){
+  opening = true;
+  const ov = document.getElementById("tapesOv");
+  const box = document.getElementById("tapesBox");
+  const pool = casePool(selCase);
+  document.getElementById("tapesTitle").textContent = `📦 ${CASES[selCase].nm} × ${winners.length}`;
+  document.getElementById("tapesRes").textContent = "";
+  document.getElementById("tapesClose").style.display = "none";
+  const STEP = 110, WIN_IDX = 50;
+  box.innerHTML = winners.map(winner => {
+    const items = [];
+    for(let j=0;j<64;j++) items.push(j===WIN_IDX ? winner : pool[Math.floor(Math.random()*pool.length)]);
+    return `<div class="tape"><div class="strip">${items.map(s=>tapeItem(s, false)).join("")}</div><div class="marker"></div></div>`;
+  }).join("");
+  ov.classList.add("show");
+  const fast = turbo || document.getElementById("swFast").classList.contains("on");
+  const strips = [...box.querySelectorAll(".strip")];
+  const results = [];
+  let stopped = 0, finishedFlag = false;
+  const finishOnce = (res)=>{ if(finishedFlag) return; finishedFlag = true; caseTimers.forEach(clearTimeout); caseTimers=[]; whooshStop(); finishTapes(res); };
+  // звук открытия + «вжух» + трещотка, привязанные к реальной скорости лент
+  const stripW0 = strips[0].parentElement.clientWidth || 320;
+  const target0 = WIN_IDX*STEP + STEP/2 - stripW0/2;
+  const maxDur0 = (fast ? 1.5 : 3.2) + (strips.length-1)*0.5;
+  sfx("open");
+  whooshStart(maxDur0);
+  caseTimers = tapeTickTimes(maxDur0, target0, STEP).map((tt,k)=>
+    setTimeout(()=>{ if(opening && !finishedFlag){ sfx("tick"); if(k%2===0) vib(5); } }, tt*1000));
+  strips.forEach((el,i)=>{
+    const tapeW = el.parentElement.clientWidth || 320;
+    const target = WIN_IDX*STEP + STEP/2 - tapeW/2;
+    const dur = (fast ? 1.5 : 3.2) + i*0.5;
+    el.style.transition = `transform ${dur.toFixed(2)}s cubic-bezier(.08,.7,.1,1)`;
+    requestAnimationFrame(()=>{ el.style.transform = `translateX(-${target}px)`; });
+    setTimeout(()=>{
+      el.parentElement.classList.add("done");
+      sfx("stop"); vib(25);
+      // подсвечиваем выигрыш ТОЛЬКО когда лента остановилась
+      const winEl = el.children[WIN_IDX];
+      if(winEl){ winEl.style.borderColor="#ffd83d"; winEl.style.background="#2a2410"; }
+      results.push(winner);
+      stopped++;
+      document.getElementById("tapesRes").textContent =
+        `Остановлено ${stopped} из ${strips.length}…`;
+      if(stopped === strips.length) finishOnce(results);
+    }, dur*1000 + 60);
+  });
+  // страховка: даже если браузер заморозил таймеры — результат засчитается
+  const maxDur = (fast ? 1.5 : 3.2) + (winners.length-1)*0.5;
+  setTimeout(()=>{ if(opening && !finishedFlag) finishOnce(winners); }, maxDur*1000 + 1500);
+}
+function finishTapes(results){
+  let coins = 0, sum = 0;
+  results.forEach(w=>{
+    S.inv.push(w.i); sum += w.p;
+    if(Math.random() < 0.45) coins += Math.round(CASES[selCase].pr*(0.5+Math.random()*2));
+  });
+  if(coins) addBal(coins);
+  document.getElementById("tapesRes").innerHTML =
+    `Выпало: <b>${results.length}</b> скинов на <b>${fmt(sum)} 🪙</b>` +
+    (coins ? ` · возврат <b>${fmt(coins)} 🪙</b>` : "");
+  document.getElementById("tapesClose").style.display = "block";
+  sfx(coins ? "win" : "lose");
+  vib([40,80,40]);
+  save();
+}
+function closeTapes(){
+  caseTimers.forEach(clearTimeout); caseTimers=[];
+  whooshStop();
+  document.getElementById("tapesOv").classList.remove("show");
+  opening = false;
+  renderInv();
+}
+
+/* ================= ПРЕДПРОСМОТР КЕЙСА ================= */
+let cpAll = false, cpPage = 0;
+const CP_PER = 24;
+function renderCasePreview(){
+  const c = CASES[selCase], pool = casePool(selCase);
+  const sorted = [...pool].sort((a,b)=>b.p-a.p);
+  const lo = sorted[sorted.length-1].p, hi = sorted[0].p;
+  document.getElementById("cpTitle").textContent = `👀 Что может выпасть: ${c.nm}`;
+  document.getElementById("cpInfo").innerHTML =
+    `Скинов в пуле: <b>${pool.length}</b> · цены от <b>${fmt(lo)} 🪙</b> до <b>${fmt(hi)} 🪙</b>`;
+  let arr = sorted;
+  if(cpAll){
+    const pages = Math.max(1, Math.ceil(sorted.length/CP_PER));
+    cpPage = Math.min(cpPage, pages-1);
+    document.getElementById("cpNav").style.display = "flex";
+    document.getElementById("cpPageInfo").textContent = `${cpPage+1} / ${pages}`;
+    arr = sorted.slice(cpPage*CP_PER, (cpPage+1)*CP_PER);
+  } else {
+    document.getElementById("cpNav").style.display = "none";
+    arr = sorted.slice(0,9);
+  }
+  document.getElementById("cpGrid").innerHTML = arr.map(s=>
+    `<div class="skin"><div class="em">${s.em}</div><div>${s.nm}</div>
+     <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
+     <div class="prc">${fmt(s.p)} 🪙</div></div>`).join("");
+}
+function toggleCpAll(){ cpAll = !cpAll; cpPage = 0; sfx("click"); renderCasePreview(); }
+function cpPageF(d){ cpPage = Math.max(0, cpPage+d); renderCasePreview(); }
+
+/* ================= 10 000 СКИНОВ (детерминированная генерация) ================= */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296; }; }
+const WEAPONS = [["🔫","AK-47"],["🔫","AWP"],["🔫","M4A4"],["🔫","Desert Eagle"],
+  ["🔫","Galil AR"],["🔫","Famas"],["🔪","Нож-бабочка"],["🔪","Керамбит"],
+  ["🔪","Штык-нож"],["🧤","Перчатки"],["🪖","Каска"],["🎒","Рюкзак"],
+  ["💣","C4"],["🎯","Наклейка"],["🧴","Спрей"],["⌚","Часы"]];
+const FINISHES = ["Азимов","Огненный змей","Гиперзверь","Драконье стеклышко","Ледяной пепел",
+  "Кровавая паутина","Змеиный укус","Кислотный дождь","Звёздный след","Пустынный орёл",
+  "Королевский пурпур","Неоновый рассвет","Чёрный алмаз","Токсичный","Молот ведьм",
+  "Золотой феникс","Тень Алтаря","Ржавый коготь","Полярный камуфляж","Сахарный череп",
+  "Электрический шторм","Вулканический пепел","Изумрудный вихрь"];
+const WEARS = ["Прям. с завода","Немного поношенное","После полевых испытаний","Поношенное","Закалённое в боях"];
+const SKINS = Array.from({length:10500}, (_,i)=>{
+  const rnd = mulberry32(i*7+13);
+  const w = WEAPONS[Math.floor(rnd()*WEAPONS.length)];
+  const f = FINISHES[Math.floor(rnd()*FINISHES.length)];
+  const wear = WEARS[Math.floor(rnd()*WEARS.length)];
+  // плотная ценовая сетка от 1 до 1 000 000 000 (первые 10 000):
+  // между соседними ценами разница всего ~0.2%, поэтому апгрейд
+  // всегда находит скин ровно нужной стоимости — без «склеек»
+  let p;
+  if(i<10000) p = Math.round(Math.pow(10, 9*i/9999));
+  // 500 жёлтых легендарок: от 1 млрд до 100 млрд, шаг ~0.9%
+  else p = Math.round(1000000000 * Math.pow(100, (i-10000)/499));
+  p = Math.max(1, Math.min(100000000000, p));
+  const r = p<10 ? 0 : p<1000 ? 1 : p<50000 ? 2 : p<2000000 ? 3 : p<100000000 ? 4 : 5;
+  return { i, em:w[0], nm:`${w[1]} | ${f}`, wear, r, p };
+});
+// легендарный топ-скин — ровно 100 000 000 000 🪙
+SKINS[10499] = { i:10499, em:"🔪", nm:"M9 Bayonet | Пепел", wear:"Прям. с завода", r:5, p:100000000000 };
+
+// ближайший по цене скин (бинарный поиск по отсортированной сетке)
+const BY_PRICE = [...SKINS].sort((a,b)=>a.p-b.p);
+function nearestSkin(target){
+  let lo=0, hi=BY_PRICE.length-1;
+  while(lo<hi){ const m=(lo+hi)>>1; if(BY_PRICE[m].p<target) lo=m+1; else hi=m; }
+  const a=BY_PRICE[lo], b=BY_PRICE[Math.max(0,lo-1)];
+  return Math.abs(a.p-target) <= Math.abs(b.p-target) ? a : b;
+}
+
+/* ================= МАРКЕТ: фильтры, сортировка, поиск, страницы ================= */
+let mSort="desc", mRare=-1, mQuery="", mPage=0;
+const PER = 30;
+function mktChange(){
+  mSort = document.getElementById("mktSort").value;
+  mRare = +document.getElementById("mktRare").value;
+  mQuery = document.getElementById("mktSearch").value.trim().toLowerCase();
+  mPage = 0; vib(8);
+  renderMarket();
+}
+function mktPage(d){
+  mPage = Math.max(0, mPage + d);
+  vib(8); renderMarket();
+}
+let mktArr = [];
+function renderMarket(){
+  let arr = SKINS;
+  if(mRare>=0) arr = arr.filter(s=>s.r===mRare);
+  if(mQuery) arr = arr.filter(s=>s.nm.toLowerCase().includes(mQuery));
+  if(mSort==="desc") arr = [...arr].sort((a,b)=>b.p-a.p);
+  else if(mSort==="asc") arr = [...arr].sort((a,b)=>a.p-b.p);
+  else arr = [...arr].sort(()=>Math.random()-0.5);
+  mktArr = arr;
+  const pages = Math.max(1, Math.ceil(arr.length/PER));
+  mPage = Math.min(mPage, pages-1);
+  document.getElementById("mktPageInfo").textContent = `${mPage+1} / ${pages} · найдено ${fmt(arr.length)}`;
+  document.getElementById("shop").innerHTML = arr.slice(mPage*PER,(mPage+1)*PER).map(s=>
+    `<div class="skin"><div class="em">${s.em}</div><div>${s.nm}</div>
+     <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
+     <div class="prc">${fmt(s.p)} 🪙</div>
+     <button class="primary" onclick="buySkin(${s.i})">Купить</button></div>`).join("");
+}
+function buySkin(i){
+  const s = SKINS[i];
+  if(S.bal<s.p){ toast("Мало монет!"); return; }
+  addBal(-s.p); S.inv.push(i); save();
+  sfx("coin"); vib(20);
+  toast("Куплено: "+s.nm);
+  renderInv();
+}
+
+/* ================= ИНВЕНТАРЬ ================= */
+let invView = [];
+function renderInv(){
+  const inv = S.inv.map(i=>SKINS[i]).sort((a,b)=>b.p-a.p);
+  invView = inv;
+  document.getElementById("invCount").textContent = inv.length;
+  document.getElementById("invSum").textContent = fmt(inv.reduce((a,s)=>a+s.p,0))+" 🪙";
+  const box = document.getElementById("inv");
+  if(!inv.length){ box.innerHTML = `<p class="muted">Пока пусто. Купи скин в маркете или выбей из кейса!</p>`; renderUpgInv(); renderContractInv(); return; }
+  box.innerHTML = inv.map((s,k)=>
+    `<div class="skin"><div class="em">${s.em}</div><div>${s.nm}</div>
+     <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
+     <div class="prc">${fmt(s.p)} 🪙</div>
+     <button onclick="sellSkin(${k})">Продать</button></div>`).join("");
+  renderUpgInv(); renderContractInv();
+}
+function sellSkin(k){
+  const s = invView[k];
+  if(!s) return;
+  S.inv = S.inv.filter(i=>i!==s.i);
+  addBal(Math.floor(s.p*0.6));
+  sfx("coin"); vib(20);
+  toast("Продано: +"+fmt(Math.floor(s.p*0.6))+" 🪙");
+  save(); renderInv();
+}
+
+/* ================= ВЫБОР СКИНОВ ДЛЯ АПГРЕЙДА ================= */
+function renderUpgInv(){
+  const box = document.getElementById("upgInv");
+  if(!box) return;
+  updateSpinBtn();
+  if(!invView.length){
+    box.innerHTML = `<p class="muted">Нет скинов — купи в маркете или выбей из кейса. Крутка без скинов стоит 100 🪙.</p>`;
+    return;
+  }
+  box.innerHTML = invView.map((s,k)=>
+    `<div class="skin ${selSkins.has(k)?"sel":""}" onclick="pickUpgSkin(${k})">
+      <div class="em">${s.em}</div><div>${s.nm}</div>
+      <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
+      <div class="prc">${fmt(s.p)} 🪙</div></div>`).join("");
+}
+function pickUpgSkin(k){
+  if(selSkins.has(k)) selSkins.delete(k); else selSkins.add(k);
+  vib(8); sfx("click"); renderUpgInv();
+}
+function clearUpgSel(){ selSkins.clear(); renderUpgInv(); }
+
+/* ================= КОНТРАКТ: 3 скина, шанс 50/50 ================= */
+let contractSel = new Set(), contractBusy = false;
+function renderContractInv(){
+  const box = document.getElementById("contractInv"); if(!box) return;
+  const sum = [...contractSel].reduce((a,k)=>a+(invView[k]?invView[k].p:0),0);
+  document.getElementById("cCount").textContent = contractSel.size;
+  document.getElementById("cSum").textContent = fmt(sum)+" 🪙";
+  if(!invView.length){
+    box.innerHTML = `<p class="muted">Нет скинов для контракта.</p>`;
+    return;
+  }
+  box.innerHTML = invView.map((s,k)=>
+    `<div class="skin ${contractSel.has(k)?"sel":""}" onclick="pickContractSkin(${k})">
+      <div class="em">${s.em}</div><div>${s.nm}</div>
+      <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
+      <div class="prc">${fmt(s.p)} 🪙</div></div>`).join("");
+}
+function pickContractSkin(k){
+  if(contractSel.has(k)) contractSel.delete(k);
+  else { if(contractSel.size>=3){ toast("В контракт идут ровно 3 скина"); return; } contractSel.add(k); }
+  vib(8); sfx("click"); renderContractInv();
+}
+function makeContract(){
+  if(contractBusy) return;
+  const staked = [...contractSel].map(k=>invView[k]).filter(Boolean);
+  if(staked.length!==3){ toast("Нужно ровно 3 скина!"); return; }
+  contractBusy = true;
+  const sum = staked.reduce((a,s)=>a+s.p,0);
+  const win = Math.random()<0.5;
+  // честные коэффициенты: выигрыш +25..50% к сумме, проигрыш 40..60% от суммы
+  const target = win ? sum*(1.25+Math.random()*0.25) : sum*(0.4+Math.random()*0.2);
+  staked.forEach(s=>{ const pos=S.inv.indexOf(s.i); if(pos>-1) S.inv.splice(pos,1); });
+  const ns = nearestSkin(target);
+  S.inv.push(ns.i);
+  S.contracts++; bumpQuest("contracts",1);
+  const res = document.getElementById("contractRes");
+  res.innerHTML = win
+    ? `✅ Успешный контракт! ${ns.nm} за <span style="color:#8f8">${fmt(ns.p)} 🪙</span>`
+    : `💀 Контракт не удался: ${ns.nm} за <span style="color:#ff6b6b">${fmt(ns.p)} 🪙</span>`;
+  res.style.color = win ? "#8f8" : "#ff6b6b";
+  sfx(win?"win":"lose"); vib(win?[30,60,30]:120);
+  contractSel.clear(); contractBusy = false;
+  save(); renderInv();
+}
+function updateSpinBtn(){
+  const b = document.getElementById("btnSpin");
+  if(b) b.textContent = selSkins.size ? `КРУТИТЬ (${selSkins.size} шт.)` : "КРУТИТЬ";
+}
+
+/* ================= 3. ПРОФИЛЬ ================= */
+const DEMO_TOP = [
+  {n:"DragonLord", c:8421000},{n:"xX_ProkoXx", c:3110500},{n:"МамкинРолл", c:999800},
+  {n:"SkinHunter", c:720000},{n:"CaseGod", c:455000},{n:"NeFue", c:298000},
+  {n:"Тапок666", c:154000},{n:"AimWrecker", c:87300},{n:"SilverSteve", c:41200},
+  {n:"NoobMaster", c:9500}
+];
+function renderLB(){
+  const all = [...DEMO_TOP, {n:(document.getElementById("nickName").dataset.nick||"Гость")+" (ты)", c:S.bal, me:true}]
+    .sort((a,b)=>b.c-a.c).slice(0,10);
+  document.getElementById("lb").innerHTML = all.map((r,i)=>
+    `<tr class="${r.me?"me":""}"><td class="num">${["🥇","🥈","🥉"][i]||"#"+(i+1)}</td>
+     <td>${r.n}</td><td class="coins">${fmt(r.c)} 🪙</td></tr>`).join("");
+}
+renderLB();
+
+const QUESTS = [
+  {id:"cases", d:"d", nm:"Открыть 5 кейсов", goal:5, rw:150},
+  {id:"upgrades", d:"d", nm:"Выиграть 2 апгрейда на колесе", goal:2, rw:200},
+  {id:"clicks", d:"d", nm:"Сделать 50 кликов по автокликеру", goal:50, rw:120},
+  {id:"contracts", d:"w", nm:"Заключить 5 контрактов", goal:5, rw:1200},
+  {id:"upgradesW", d:"w", nm:"Выиграть 15 апгрейдов за неделю", goal:15, rw:2000},
+  {id:"spentW", d:"w", nm:"Потратить 5 000 монет за неделю", goal:5000, rw:1500}
+];
+function weekKey(){ const d=new Date(); const o=new Date(d.getFullYear(),0,1);
+  return d.getFullYear()+"-W"+Math.ceil(((d-o)/864e5+o.getDay()+1)/7); }
+function initQuests(){
+  const today = new Date().toDateString(), wk = weekKey();
+  if(S.qDay!==today){ S.qDay=today; QUESTS.filter(q=>q.d==="d").forEach(q=>S.quests[q.id]={p:0,taken:false}); }
+  if(S.qWeek!==wk){ S.qWeek=wk; QUESTS.filter(q=>q.d==="w").forEach(q=>S.quests[q.id]={p:0,taken:false}); }
+}
+S.quests = S.quests||{};
+initQuests();
+function bumpQuest(id, n){
+  const q = QUESTS.find(x=>x.id===id);
+  if(q && S.quests[id] && !S.quests[id].taken){ S.quests[id].p+=n; renderQuests(); }
+}
+function renderQuests(){
+  document.getElementById("quests").innerHTML = QUESTS.map(q=>{
+    const st = S.quests[q.id]||{p:0,taken:false};
+    const p = Math.min(st.p, q.goal), done = p>=q.goal;
+    return `<div class="quest">
+      <div class="info">
+        <div class="nm">${q.nm}<span class="tag ${q.d==="d"?"d":"w"}">${q.d==="d"?"день":"неделя"}</span></div>
+        <div class="bar"><i style="width:${p/q.goal*100}%"></i></div>
+        <div class="rw">${p}/${q.goal} · награда ${q.rw} 🪙</div>
+      </div>
+      <button class="primary" ${done&&!st.taken?"":"disabled"} onclick="takeQuest('${q.id}')">
+        ${st.taken?"✓":"Забрать"}</button></div>`;
+  }).join("");
+}
+function takeQuest(id){
+  const q = QUESTS.find(x=>x.id===id), st=S.quests[id];
+  if(st && st.p>=q.goal && !st.taken){ st.taken=true; addBal(q.rw);
+    sfx("coin"); toast("Награда: +"+q.rw+" 🪙"); save(); renderQuests(); }
+}
+renderQuests();
+
+document.getElementById("clickCircle").addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  const now = performance.now();
+  if(S.lastClick && now - S.lastClick < 20){
+    const w = document.getElementById("clickWarn");
+    w.textContent = "🚫 Слишком быстро! Задержка < 20 мс — клик не засчитан";
+    setTimeout(()=>w.textContent="", 2000);
+    S.lastClick = now; return;
+  }
+  S.lastClick = now; S.clicks++;
+  addBal(2); sfx("click"); vib(8);
+  bumpQuest("clicks",1);
+  document.getElementById("clickCount").textContent = S.clicks;
+});
+
+/* ================= 4. ЕЩЁ: настройки ================= */
+function tog(id){
+  document.getElementById(id).classList.toggle("on");
+  if(id==="swTheme") applyTheme();
+  saveSettings(); vib(10);
+}
+function applyTheme(){
+  document.body.classList.toggle("light", document.getElementById("swTheme").classList.contains("on"));
+}
+function saveSettings(){
+  const st = {}; ["swSound","swVibro","swFast","swTheme"].forEach(i=>
+    st[i]=document.getElementById(i).classList.contains("on"));
+  localStorage.setItem("skinup_settings", JSON.stringify(st));
+}
+function loadSettings(){
+  let st={};
+  try{ st = JSON.parse(localStorage.getItem("skinup_settings")||"{}")||{}; }catch(e){}
+  ["swSound","swVibro","swFast","swTheme"].forEach(i=>{
+    if(i in st) document.getElementById(i).classList.toggle("on", !!st[i]);
+  });
+}
+function updNick(){
+  const el = document.getElementById("nickName");
+  el.textContent = (el.dataset.av||"🙂")+" "+(el.dataset.nick||"Гость");
+}
+function changeNick(){
+  const el = document.getElementById("nickName");
+  const n = prompt("Твой ник:", el.dataset.nick||"Гость");
+  if(n===null) return;
+  el.dataset.nick = (n.trim()||"Гость").slice(0,16);
+  localStorage.setItem("skinup_nick", el.dataset.nick);
+  updNick(); renderLB();
+}
+function changeAvatar(){
+  const e=["🙂","😎","🦊","🐸","👽","🤖","🐱","🐉"];
+  const el = document.getElementById("nickName");
+  el.dataset.av = e[Math.floor(Math.random()*e.length)];
+  localStorage.setItem("skinup_avatar", el.dataset.av);
+  updNick(); toast("Аватар сменён: "+el.dataset.av);
+}
+function loadProfile(){
+  const el = document.getElementById("nickName");
+  el.dataset.nick = localStorage.getItem("skinup_nick")||"Гость";
+  el.dataset.av = localStorage.getItem("skinup_avatar")||"🙂";
+  updNick();
+}
+function logout(){ toast("Выход: в реальной игре — Firebase signOut"); }
+function resetAll(){ if(confirm("Сбросить весь прогресс?")){
+  localStorage.removeItem("skinup_demo_v2"); location.reload(); } }
+
+/* ================= НАВИГАЦИЯ ================= */
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  document.querySelectorAll("main section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(b.dataset.p).classList.add("active");
+  vib(10); sfx("click");
+  if(b.dataset.p==="p-upgrade") renderUpgInv();
+  if(b.dataset.p==="p-profile") renderLB();
+  if(b.dataset.p==="p-market") renderMarket();
+  if(b.dataset.p==="p-inv") renderInv();
+}));
+
+
+/* ================= ПРОМОКОДЫ ================= */
+const PROMOS = {
+  "BLOGMIX": { type:"skin" },
+  "KYZA":    { type:"coins", n:100000 },
+  "TIMOXA":  { type:"coins", n:100000 },
+  "ЧЕКУШКА": { type:"coins", n:50000 }
+};
+function applyPromo(){
+  const raw = (document.getElementById("promoInput").value||"").trim();
+  const msg = document.getElementById("promoMsg");
+  if(!raw){ msg.textContent = "Введи промокод."; return; }
+  const key = Object.keys(PROMOS).find(k=>k.toLowerCase()===raw.toLowerCase());
+  if(!key){
+    msg.textContent = "Такого промокода нет 🤷";
+    sfx("lose"); vib(40);
+    return;
+  }
+  if(!S.used) S.used = {};
+  if(S.used[key]){
+    msg.textContent = "Этот промокод уже активирован!";
+    sfx("lose");
+    return;
+  }
+  S.used[key] = 1;
+  const pr = PROMOS[key];
+  if(pr.type === "coins"){
+    addBal(pr.n);
+    msg.innerHTML = `✅ Готово! Начислено <b>${fmt(pr.n)} 🪙</b>`;
+    toast(`Промокод: +${fmt(pr.n)} 🪙`);
+  } else {
+    const m9 = SKINS.find(x=>x.nm.indexOf("M9")===0);
+    S.inv.push(m9.i);
+    save(); renderInv();
+    msg.innerHTML = `✅ Готово! Получен <b>${m9.nm}</b> (${fmt(m9.p)} 🪙)`;
+    toast(`Промокод: ${m9.nm}!`);
+  }
+  sfx("win"); vib(30);
+  save();
+}
+
+/* старт */
+loadSettings(); applyTheme(); loadProfile();
+document.getElementById("bal").textContent = S.bal;
+document.getElementById("clickCount").textContent = S.clicks;
+renderCases(); renderCasePreview(); renderMarket(); renderInv();
+</script>
+</body>
+</html>
