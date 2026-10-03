@@ -4,15 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
-<!-- ============================================================
-  FIREBASE_CONFIG — вставь сюда конфиг своего проекта Firebase,
-  чтобы топ-10 показывал реальных игроков. Пока пусто — демо-режим.
-const FIREBASE_CONFIG = {
-  // apiKey: "ТВОЙ_API_KEY",
-  // databaseURL: "https://ТВОЙ_ПРОЕКТ.firebaseio.com",
-  // projectId: "ТВОЙ_ПРОЕКТ"
-};
-============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Segoe UI',Arial,sans-serif; background:#0d0d14; color:#eee;
@@ -34,27 +28,45 @@ const FIREBASE_CONFIG = {
   button:active { transform:scale(.97); }
   button.primary { background:#ffd83d; color:#111; }
   button:disabled { opacity:.4; cursor:default; }
+  input[type="text"], input[type="email"], input[type="password"] {
+    background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
+    padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
   .chances { display:flex; gap:8px; margin:10px 0; }
   .chances button { flex:1; }
   .chances button.on { background:#ffd83d; color:#111; outline:2px solid #fff; }
 
-  /* ===== 1. КОЛЕСО: колесо стоит, стрелка бежит по его краю ===== */
+  /* ===== ЭКРАН ВХОДА ===== */
+  .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
+             align-items:center; justify-content:center; padding:16px; }
+  .auth-ov.show { display:flex; }
+  .auth-card { width:100%; max-width:340px; background:#181824; border:1px solid #2a2a3a;
+               border-radius:16px; padding:22px; }
+  .auth-logo { font-weight:900; font-size:26px; color:#ffd83d; text-align:center;
+               letter-spacing:2px; margin-bottom:6px; }
+  .auth-sub { text-align:center; color:#888; font-size:12.5px; margin-bottom:14px; }
+  .auth-tabs { display:flex; gap:8px; margin-bottom:12px; }
+  .auth-tabs button { flex:1; }
+  .auth-tabs button.on { background:#ffd83d; color:#111; }
+  .auth-card input { width:100%; margin-bottom:10px; }
+  .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
+  .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
+  .auth-card button.primary { width:100%; }
+  body.light .auth-ov { background:#eef0f5; }
+  body.light .auth-card { background:#fff; border-color:#d9dce3; }
+  body.light .auth-card input { background:#f4f5f9; color:#1c1c28; border-color:#d9dce3; }
+
+  /* ===== 1. КОЛЕСО ===== */
   .wheel-wrap { position:relative; width:280px; height:280px; margin:16px auto; }
-  .wheel { position:absolute; inset:0; border-radius:50%;
-           border:6px solid #333; background:#111; }
+  .wheel { position:absolute; inset:0; border-radius:50%; border:6px solid #333; background:#111; }
   .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
   .needle { position:absolute; top:-6px; left:50%; transform:translateX(-50%);
             width:0; height:0; z-index:5;
-            /* красный треугольник: остриём вниз, к ободу колеса */
-            border-left:13px solid transparent;
-            border-right:13px solid transparent;
+            border-left:13px solid transparent; border-right:13px solid transparent;
             border-top:38px solid #e63946;
-            filter:drop-shadow(0 2px 3px rgba(0,0,0,.7));
-            pointer-events:none; }
+            filter:drop-shadow(0 2px 3px rgba(0,0,0,.7)); pointer-events:none; }
   .needle-in { position:absolute; top:-2px; left:50%; transform:translateX(-50%);
             width:0; height:0; z-index:6; pointer-events:none;
-            border-left:8px solid transparent;
-            border-right:8px solid transparent;
+            border-left:8px solid transparent; border-right:8px solid transparent;
             border-top:28px solid #14141f; }
   .hub { position:absolute; left:50%; top:50%; width:16px; height:16px; margin:-8px 0 0 -8px;
          border-radius:50%; background:#222; border:2px solid #555; z-index:6; }
@@ -77,7 +89,6 @@ const FIREBASE_CONFIG = {
   .case-qty { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0; }
   .case-qty button { width:40px; height:40px; border-radius:50%; font-size:20px; }
 
-  /* ЛЕНТЫ ОТКРЫТИЯ КЕЙСОВ */
   .tapes-ov { position:fixed; inset:0; background:rgba(5,5,10,.96); z-index:60;
               display:none; flex-direction:column; padding:14px; overflow-y:auto; }
   .tapes-ov.show { display:flex; }
@@ -136,7 +147,13 @@ const FIREBASE_CONFIG = {
   .tag { font-size:10px; background:#2a2a3a; border-radius:8px; padding:2px 7px; margin-left:6px; }
   .tag.d { background:#1a2a3a; color:#7ec8ff; } .tag.w { background:#3a1a2a; color:#ff9ecb; }
 
-  /* АВТОКЛИКЕР */
+  .trade-in { background:#0f0f18; border:1px solid #2a2a3a; border-radius:12px;
+              padding:10px; margin-bottom:8px; font-size:13px; }
+  .trade-in .tn { font-weight:700; color:#ffd83d; }
+  .trade-in .ti { color:#bbb; font-size:12px; margin:5px 0; }
+  .trade-in .tbtns { display:flex; gap:8px; margin-top:6px; }
+  .trade-in button { flex:1; padding:7px 4px; font-size:12px; }
+
   .clicker-wrap { text-align:center; }
   .click-circle { width:110px; height:110px; border-radius:50%; margin:14px auto;
                   background:radial-gradient(circle at 35% 30%, #ffe98a, #ffd83d 60%, #d9a800);
@@ -148,7 +165,6 @@ const FIREBASE_CONFIG = {
   .click-info b { color:#ffd83d; }
   .click-warn { color:#ff6b6b; font-weight:700; font-size:13px; min-height:18px; margin-top:4px; }
 
-  /* ===== 4. ЕЩЁ ===== */
   .set-row { display:flex; justify-content:space-between; align-items:center;
              padding:11px 0; border-bottom:1px solid #222; font-size:14px; }
   .switch { width:46px; height:26px; border-radius:14px; background:#333; position:relative; cursor:pointer; }
@@ -170,7 +186,6 @@ const FIREBASE_CONFIG = {
   .toast.show { opacity:1; }
   .prc { color:#ffd83d; }
 
-  /* ===== СВЕТЛАЯ ТЕМА ===== */
   body.light { background:#eef0f5; color:#1c1c28; }
   body.light header { background:#fff; border-bottom-color:#e0a800; }
   body.light header .logo, body.light header .balance { color:#b8860b; }
@@ -186,7 +201,7 @@ const FIREBASE_CONFIG = {
   body.light .tag { background:#eceef3; color:#555; }
   body.light .prc, body.light .case-card .pr, body.light .tapes-res { color:#b8860b; }
   body.light .case-card .mx { color:#777; }
-  body.light .titem, body.light .tape { background:#f7f8fb; border-color:#d9dce3; }
+  body.light .titem, body.light .tape, body.light .trade-in { background:#f7f8fb; border-color:#d9dce3; }
   body.light .titem .pr { color:#777; }
   body.light .tape::before { background:linear-gradient(90deg,#f7f8fb,transparent); }
   body.light .tape::after { background:linear-gradient(270deg,#f7f8fb,transparent); }
@@ -203,6 +218,35 @@ const FIREBASE_CONFIG = {
 </header>
 <main>
   <div class="toast" id="toast"></div>
+
+  <!-- ===== ЭКРАН ВХОДА ===== -->
+  <div class="auth-ov" id="authOv">
+    <div class="auth-card">
+      <div class="auth-logo">SKINUP</div>
+      <div class="auth-sub">Войди в аккаунт, чтобы играть</div>
+      <div class="auth-tabs">
+        <button id="tabLogin" class="on" onclick="setAuthMode(false)">Вход</button>
+        <button id="tabReg" onclick="setAuthMode(true)">Регистрация</button>
+      </div>
+      <input id="authEmail" type="email" placeholder="Почта (можно выдуманную)">
+      <input id="authPass" type="password" placeholder="Пароль (мин. 6 символов)">
+      <input id="authNick" type="text" placeholder="Придумай ник (3–16 символов)" style="display:none">
+      <div class="auth-err" id="authErr"></div>
+      <button class="primary" id="authGo">Войти</button>
+      <p class="auth-note">Прогресс хранится на сервере: зайдёшь с телефона или компа — увидишь свой аккаунт.</p>
+    </div>
+  </div>
+
+  <!-- ===== ВЫБОР НИКА ===== -->
+  <div class="auth-ov" id="nickOv">
+    <div class="auth-card">
+      <div class="auth-logo">НОВЫЙ НИК</div>
+      <div class="auth-sub">Ник увидят другие игроки в топе и в трейдах. Он уникален.</div>
+      <input id="nickInput" type="text" placeholder="Придумай ник (3–16 символов)">
+      <div class="auth-err" id="nickErr"></div>
+      <button class="primary" id="nickGo">Сохранить ник</button>
+    </div>
+  </div>
 
   <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
@@ -228,7 +272,7 @@ const FIREBASE_CONFIG = {
     </div>
     <p class="muted" style="margin-top:8px;">⚡ работает всегда: во время прокрутки — ускоряет колесо, в кейсах — включает турбо-режим лент.</p>
     <h3>Скины на прокрутку</h3>
-    <p class="muted">Нажми на скин — он выделится жёлтой рамкой. Выбранные скины крутятся все вместе: при выигрыше каждый из них заменяется на более дорогой, при проигрыше — сгорает. Положил 2 — получил 2, положил 10 — получил 10.</p>
+    <p class="muted">Нажми на скин — он выделится жёлтой рамкой. Выбранные скины крутятся все вместе: при выигрыше каждый из них заменяется на более дорогой, при проигрыше — сгорает.</p>
     <div class="inv-grid" id="upgInv"></div>
     <button style="width:100%;margin-top:8px;" onclick="clearUpgSel()">Снять выделение</button>
   </section>
@@ -292,7 +336,7 @@ const FIREBASE_CONFIG = {
     <div class="inv-sum">Скинов: <b id="invCount">0</b> · Общая стоимость: <b id="invSum">0 🪙</b></div>
     <div class="inv-grid" id="inv"></div>
     <h3 style="margin-top:18px;">🔗 Контракт</h3>
-    <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин немного дороже суммы всех трёх, не повезёт — дешевле, но он останется у тебя.</p>
+    <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин дороже суммы всех трёх, не повезёт — дешевле, но он останется у тебя.</p>
     <div class="inv-grid" id="contractInv"></div>
     <div class="inv-sum">Выбрано: <b id="cCount">0</b>/3 · Сумма: <b id="cSum">0 🪙</b></div>
     <button class="primary" style="width:100%" onclick="makeContract()">ЗАКЛЮЧИТЬ КОНТРАКТ</button>
@@ -305,12 +349,24 @@ const FIREBASE_CONFIG = {
     <div class="card">
       <div id="top10wrap"><h3>🏆 Топ-10 игроков</h3></div>
       <table class="lb" id="lb"></table>
-      <p class="muted" style="margin-top:8px;font-size:11px;" id="lbNote">Демо-режим: данные только на этом устройстве.</p>
+      <p class="muted" style="margin-top:8px;font-size:11px;" id="lbNote">Живой топ-10 из базы данных.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Трейды</h3>
+      <p class="muted">Отправь скины другому игроку по нику — он примет или отклонит.</p>
+      <div style="display:flex;gap:8px;margin:6px 0 10px;">
+        <input id="tradeNick" type="text" placeholder="Ник получателя" style="flex:1;">
+        <button class="primary" onclick="sendTrade()">Отправить</button>
+      </div>
+      <div class="inv-grid" id="tradeInv"></div>
+      <div class="inv-sum">Выбрано: <b id="tCount">0</b> · Сумма: <b id="tSum">0 🪙</b></div>
+      <h3 style="margin-top:14px;">📥 Входящие трейды</h3>
+      <div id="tradesIn"><p class="muted">Пока пусто.</p></div>
     </div>
     <div class="card">
       <h3>🎟 Промокод</h3>
       <div style="display:flex;gap:8px;margin-top:6px;">
-        <input id="promoInput" placeholder="Введи промокод…" style="flex:1;background:var(--card2,#1c1c24);border:1px solid var(--line,#333);color:inherit;padding:8px 10px;border-radius:8px;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')applyPromo()">
+        <input id="promoInput" type="text" placeholder="Введи промокод…" style="flex:1;" onkeydown="if(event.key==='Enter')applyPromo()">
         <button onclick="applyPromo()">Активировать</button>
       </div>
       <div id="promoMsg" class="muted" style="margin-top:6px;font-size:12px;">&nbsp;</div>
@@ -334,8 +390,9 @@ const FIREBASE_CONFIG = {
   <section id="p-more">
     <h2>⚙️ Настройки аккаунта</h2>
     <div class="card">
-      <div class="set-row"><span>🙂 Ник</span><span id="nickName" data-nick="Гость" data-av="🙂" style="cursor:pointer" onclick="changeNick()">🙂 Гость</span></div>
+      <div class="set-row"><span>🙂 Ник</span><span id="nickName" style="cursor:pointer" onclick="changeNick()">🙂 Гость</span></div>
       <div class="set-row"><span>🖼 Аватар</span><button onclick="changeAvatar()">Сменить</button></div>
+      <div class="set-row"><span>👤 Аккаунт</span><span id="accEmail" style="color:#888;font-size:12px;"></span></div>
       <div class="set-row"><span>🚪 Выход</span><button onclick="logout()">Выйти</button></div>
     </div>
     <h2>⚙️ Настройки игры</h2>
@@ -367,19 +424,281 @@ const FIREBASE_CONFIG = {
 </nav>
 
 <script>
+/* ================= FIREBASE ================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAFg8jtdZDE8A-bDwzkYJn2cDYyS6XbMYQ",
+  authDomain: "skinup-4c47f.firebaseapp.com",
+  databaseURL: "https://skinup-4c47f-default-rtdb.firebaseio.com",
+  projectId: "skinup-4c47f",
+  storageBucket: "skinup-4c47f.firebasestorage.app",
+  messagingSenderId: "462099174617",
+  appId: "1:462099174617:web:ac6ecb2bd6f443fb6a5ac8"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+const fbDB = firebase.database();
+let USER = null;            // {uid, email}
+let cloudSaveTimer = null;
+let tradesRef = null, lbListenerOn = false, lbRows = [];
+
 /* ================= СОСТОЯНИЕ ================= */
 const RARE = ["Обычный","Редкий","Эпический","Легендарный","Мифический","Божественный"];
 const RARE_C = ["#888","#4a9","#a6f","#f8b","#f4a","#ffd83d"];
 let S = JSON.parse(localStorage.getItem("skinup_demo_v2")||"null") ||
   { bal:1000, chance:50, wheelWin:0, wheelLose:0,
     quests:null, qDay:"", qWeek:"", clicks:0, lastClick:0,
-    caseOpened:0, contracts:0, upgrades:0, spent:0, inv:[] };
-S.inv = S.inv || [];
-function save(){ localStorage.setItem("skinup_demo_v2", JSON.stringify(S)); }
+    caseOpened:0, contracts:0, upgrades:0, spent:0, inv:[],
+    nick:"", av:"🙂", used:{} };
+S.inv = S.inv || []; S.used = S.used || {};
+
+function save(){
+  localStorage.setItem("skinup_demo_v2", JSON.stringify(S));
+  queueCloudSave();
+}
+function queueCloudSave(){
+  if(!USER) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(()=>{
+    fbDB.ref('users/'+USER.uid).update({
+      bal:S.bal, inv:S.inv, nick:S.nick||"", av:S.av||"🙂"
+    }).catch(e=>console.warn("cloudSave:", e));
+  }, 700);
+}
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t;
   el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1600); }
 function addBal(n){ S.bal=Math.max(0,S.bal+n); document.getElementById("bal").textContent=S.bal; save(); }
 function fmt(n){ return n.toLocaleString("ru-RU"); }
+
+/* ================= АВТОРИЗАЦИЯ ================= */
+try{ fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION); }catch(e){}
+function setAuthMode(reg){
+  document.getElementById("tabLogin").classList.toggle("on", !reg);
+  document.getElementById("tabReg").classList.toggle("on", reg);
+  document.getElementById("authNick").style.display = reg ? "block" : "none";
+  document.getElementById("authGo").textContent = reg ? "Зарегистрироваться" : "Войти";
+  document.getElementById("authErr").textContent = "";
+}
+function authErr(t){ document.getElementById("authErr").textContent = t; }
+function mapAuthErr(e){
+  const c = (e && e.code) || "";
+  if(c.includes("email-already-in-use")) return "Эта почта уже занята — нажми «Вход»";
+  if(c.includes("invalid-email")) return "Неправильная почта";
+  if(c.includes("weak-password")) return "Пароль слишком слабый (минимум 6 символов)";
+  if(c.includes("missing-password")) return "Введи пароль";
+  if(c.includes("wrong-password") || c.includes("user-not-found") || c.includes("invalid-credential"))
+    return "Неверная почта или пароль";
+  if(c.includes("network-request-failed")) return "Нет соединения с интернетом";
+  if(c.includes("too-many-requests")) return "Слишком много попыток, подожди минуту";
+  return "Ошибка: " + c;
+}
+document.getElementById("authGo").onclick = async ()=>{
+  const email = document.getElementById("authEmail").value.trim();
+  const pass  = document.getElementById("authPass").value;
+  const nick  = document.getElementById("authNick").value.trim();
+  const reg = document.getElementById("tabReg").classList.contains("on");
+  authErr("");
+  if(!email || !pass){ authErr("Заполни почту и пароль"); return; }
+  if(reg){
+    if(nick.length<3 || nick.length>16){ authErr("Ник: от 3 до 16 символов"); return; }
+    try{
+      const cred = await fbAuth.createUserWithEmailAndPassword(email, pass);
+      try{
+        await claimNick(nick);
+        await fbDB.ref('users/'+cred.user.uid).set({
+          bal:1000, inv:[], nick:nick, av:"🙂", created:Date.now()
+        });
+      }catch(e2){
+        try{ await cred.user.delete(); }catch(e3){ await fbAuth.signOut().catch(()=>{}); }
+        authErr(e2.message || "Не удалось занять ник");
+      }
+    }catch(e){ authErr(mapAuthErr(e)); }
+  } else {
+    try{ await fbAuth.signInWithEmailAndPassword(email, pass); }
+    catch(e){ authErr(mapAuthErr(e)); }
+  }
+};
+document.getElementById("nickGo").onclick = async ()=>{
+  const nick = document.getElementById("nickInput").value.trim();
+  try{
+    await claimNick(nick);
+    await fbDB.ref('users/'+USER.uid).update({ nick:nick });
+    document.getElementById("nickOv").classList.remove("show");
+    renderTradeSel(); renderLB();
+  }catch(e){
+    document.getElementById("nickErr").textContent = e.message || "Ошибка";
+  }
+};
+async function claimNick(nick){
+  nick = (nick||"").trim();
+  if(nick.length<3 || nick.length>16) throw new Error("Ник: от 3 до 16 символов");
+  const enc = encodeURIComponent(nick.toLowerCase());
+  const snap = await fbDB.ref('nicks/'+enc).get();
+  const val = snap.val();
+  if(val && val !== USER.uid) throw new Error("Этот ник уже занят");
+  await fbDB.ref('nicks/'+enc).set(USER.uid);
+  if(S.nick && S.nick.toLowerCase() !== nick.toLowerCase()){
+    fbDB.ref('nicks/'+encodeURIComponent(S.nick.toLowerCase())).remove().catch(()=>{});
+  }
+  S.nick = nick; save(); updNick();
+  return nick;
+}
+fbAuth.onAuthStateChanged(async user=>{
+  if(user){
+    USER = { uid:user.uid, email:user.email };
+    document.getElementById("authOv").classList.remove("show");
+    document.getElementById("accEmail").textContent = user.email;
+    await loadUserData();
+  } else {
+    USER = null;
+    document.getElementById("authOv").classList.add("show");
+  }
+});
+async function loadUserData(){
+  try{
+    const snap = await fbDB.ref('users/'+USER.uid).get();
+    const d = snap.val();
+    if(d && typeof d.bal === "number"){
+      S.bal = d.bal;
+      S.inv = Array.isArray(d.inv) ? d.inv : [];
+      S.nick = d.nick || "";
+      S.av = d.av || "🙂";
+    } else {
+      S.bal = 1000; S.inv = []; S.nick = S.nick || ""; S.av = S.av || "🙂";
+      await fbDB.ref('users/'+USER.uid).set({
+        bal:S.bal, inv:S.inv, nick:S.nick, av:S.av, created:Date.now()
+      }).catch(()=>{});
+    }
+    save();
+    document.getElementById("bal").textContent = S.bal;
+    document.getElementById("clickCount").textContent = S.clicks;
+    updNick(); renderInv(); startLB();
+    listenTrades();
+    if(!S.nick) document.getElementById("nickOv").classList.add("show");
+  }catch(e){
+    console.warn("loadUserData:", e);
+    toast("Ошибка загрузки профиля");
+  }
+}
+function logout(){
+  if(tradesRef){ tradesRef.off(); tradesRef = null; }
+  lbListenerOn = false;
+  fbAuth.signOut().then(()=>location.reload()).catch(()=>location.reload());
+}
+
+/* ================= ЖИВОЙ ТОП-10 ================= */
+function startLB(){
+  if(lbListenerOn || !USER) return;
+  lbListenerOn = true;
+  fbDB.ref('users').orderByChild('bal').limitToLast(10).on('value', snap=>{
+    lbRows = [];
+    snap.forEach(ch=>{ const v=ch.val()||{};
+      lbRows.push({ uid:ch.key, nick:v.nick||"Игрок", bal:v.bal||0, av:v.av||"🙂" }); });
+    lbRows.reverse();
+    renderLB();
+  }, err=>{ console.warn("LB:", err); lbListenerOn=false; });
+}
+function renderLB(){
+  let rows = lbRows.map(r=>({...r}));
+  if(USER){
+    const i = rows.findIndex(r=>r.uid===USER.uid);
+    if(i>-1){ rows[i].me = true; rows[i].nick += " (ты)"; }
+    else rows.push({ uid:USER.uid, nick:(S.nick||"Гость")+" (ты)", av:S.av, bal:S.bal, me:true });
+  }
+  document.getElementById("lb").innerHTML = rows.map((r,i)=>
+    `<tr class="${r.me?"me":""}"><td class="num">${["🥇","🥈","🥉"][i]||"#"+(i+1)}</td>
+     <td>${(r.av||"🙂")+" "+r.nick}</td><td class="coins">${fmt(r.bal)} 🪙</td></tr>`).join("")
+    || `<tr><td colspan="3" style="color:#888;">Войди в аккаунт, чтобы попасть в топ</td></tr>`;
+}
+
+/* ================= ТРЕЙДЫ ================= */
+let tradeSel = new Set();
+function renderTradeSel(){
+  const box = document.getElementById("tradeInv"); if(!box) return;
+  const sum = [...tradeSel].reduce((a,k)=>a+(invView[k]?invView[k].p:0),0);
+  document.getElementById("tCount").textContent = tradeSel.size;
+  document.getElementById("tSum").textContent = fmt(sum)+" 🪙";
+  if(!invView.length){ box.innerHTML = `<p class="muted">Нет скинов для трейда.</p>`; return; }
+  box.innerHTML = invView.map((s,k)=>
+    `<div class="skin ${tradeSel.has(k)?"sel":""}" onclick="pickTradeSkin(${k})">
+      <div class="em">${s.em}</div><div>${s.nm}</div>
+      <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
+      <div class="prc">${fmt(s.p)} 🪙</div></div>`).join("");
+}
+function pickTradeSkin(k){
+  if(tradeSel.has(k)) tradeSel.delete(k); else tradeSel.add(k);
+  vib(8); sfx("click"); renderTradeSel();
+}
+async function sendTrade(){
+  if(!USER) return;
+  const nick = (document.getElementById("tradeNick").value||"").trim();
+  if(!tradeSel.size){ toast("Выбери скины для трейда"); return; }
+  if(!nick){ toast("Введи ник получателя"); return; }
+  if(S.nick && nick.toLowerCase()===S.nick.toLowerCase()){ toast("Нельзя отправить трейд самому себе"); return; }
+  const items = [...tradeSel].map(k=>invView[k]&&invView[k].i).filter(x=>x!==undefined);
+  if(!items.length){ toast("Выбери скины"); return; }
+  try{
+    const snap = await fbDB.ref('nicks/'+encodeURIComponent(nick.toLowerCase())).get();
+    const toUid = snap.val();
+    if(!toUid){ toast("Игрок с таким ником не найден"); return; }
+    await fbDB.ref('trades/'+toUid).push({
+      from:USER.uid, fromNick:S.nick||"Игрок", items:items, ts:Date.now(), status:"pending"
+    });
+    tradeSel.clear(); renderTradeSel();
+    document.getElementById("tradeNick").value = "";
+    toast("Трейд отправлен: "+nick);
+    sfx("coin");
+  }catch(e){ console.warn(e); toast("Ошибка отправки трейда"); }
+}
+function listenTrades(){
+  if(tradesRef) tradesRef.off();
+  tradesRef = fbDB.ref('trades/'+USER.uid);
+  tradesRef.on('value', snap=>{
+    const list = [];
+    snap.forEach(ch=>{ const t=ch.val();
+      if(t && t.status!=="done") list.push({ id:ch.key, ...t }); });
+    list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    renderTradesIn(list);
+  }, err=>console.warn("trades:", err));
+}
+function renderTradesIn(list){
+  const box = document.getElementById("tradesIn"); if(!box) return;
+  if(!list.length){ box.innerHTML = `<p class="muted">Пока пусто.</p>`; return; }
+  box.innerHTML = list.map(t=>{
+    const names = (t.items||[]).map(i=>SKINS[i] ? `${SKINS[i].em} ${SKINS[i].nm} (${fmt(SKINS[i].p)} 🪙)` : "?").join(", ");
+    return `<div class="trade-in">
+      <div class="tn">от ${(t.fromNick||"Игрок")}</div>
+      <div class="ti">${names || "пусто"}</div>
+      <div class="tbtns">
+        <button class="primary" onclick="acceptTrade('${t.id}')">Принять</button>
+        <button onclick="declineTrade('${t.id}')">✕ Отклонить</button>
+      </div></div>`;
+  }).join("");
+}
+async function acceptTrade(tradeId){
+  const snap = await fbDB.ref('trades/'+USER.uid+'/'+tradeId).get();
+  const t = snap.val();
+  if(!t || !Array.isArray(t.items) || !t.items.length) return;
+  let committed = false;
+  await fbDB.ref('users/'+t.from+'/inv').transaction(inv=>{
+    const out = (inv||[]).slice();
+    for(const id of t.items){ if(out.indexOf(id)<0) return; } // у отправителя чего-то нет — отмена
+    for(const id of t.items){ out.splice(out.indexOf(id),1); }
+    return out;
+  }, (err,comm)=>{ committed = !!comm; });
+  if(!committed){
+    await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
+    toast("У отправителя уже нет этих скинов — трейд отменён");
+    return;
+  }
+  t.items.forEach(i=>S.inv.push(i));
+  save(); renderInv(); sfx("win");
+  await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
+  toast("Трейд принят!");
+}
+async function declineTrade(tradeId){
+  await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
+  toast("Трейд отклонён");
+}
 
 /* ================= ЗВУКИ (WebAudio, синтез) ================= */
 let AC=null, MASTER=null, NOISEBUF=null;
@@ -390,7 +709,6 @@ function ac(){
     comp.threshold.value=-16; comp.ratio.value=5; comp.knee.value=20;
     MASTER = AC.createGain(); MASTER.gain.value=0.85;
     MASTER.connect(comp); comp.connect(AC.destination);
-    // общий буфер белого шума — для щелчков, «вжуха» и ударов
     NOISEBUF = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate);
     const d = NOISEBUF.getChannelData(0);
     for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
@@ -399,7 +717,6 @@ function ac(){
 }
 document.addEventListener("pointerdown", ()=>{ try{ ac().resume(); }catch(e){} }, {once:true});
 function soundOn(){ return document.getElementById("swSound").classList.contains("on"); }
-
 function tone(freq,dur,type,vol,when,slide){
   const ctx=ac(), t=ctx.currentTime+(when||0);
   const o=ctx.createOscillator(), g=ctx.createGain();
@@ -425,44 +742,29 @@ let tickFlip=0;
 function sfx(kind){
   if(!soundOn()) return;
   try{
-    if(kind==="tick"){ // трещотка: сухой щелчок + короткий деревянный тон, чередуем высоту
-      tickFlip^=1;
+    if(kind==="tick"){ tickFlip^=1;
       noiseHit(0,0.02,0.05,2600+tickFlip*380,2);
-      tone(1850+tickFlip*260,0.035,"triangle",0.05);
-    }
+      tone(1850+tickFlip*260,0.035,"triangle",0.05); }
     else if(kind==="click"){ tone(540,0.06,"sine",0.07); tone(1080,0.045,"sine",0.035,0.012); }
     else if(kind==="coin"){ tone(988,0.08,"sine",0.09); tone(1480,0.14,"sine",0.09,0.05); tone(1976,0.2,"sine",0.05,0.09); }
-    else if(kind==="stop"){ // тяжёлый «тук» замка + лёгкий металлический отклик
-      tone(150,0.13,"sine",0.17,0,-70);
-      noiseHit(0,0.05,0.07,900,1.5);
-      tone(1050,0.09,"sine",0.05,0.015);
-    }
+    else if(kind==="stop"){ tone(150,0.13,"sine",0.17,0,-70); noiseHit(0,0.05,0.07,900,1.5); tone(1050,0.09,"sine",0.05,0.015); }
     else if(kind==="win"){ [523,659,784,1047,1319].forEach((f,i)=>{ tone(f,0.26,"triangle",0.08,i*0.08); tone(f/2,0.26,"sine",0.045,i*0.08); }); }
     else if(kind==="lose"){ tone(330,0.28,"sine",0.09,0,-120); tone(250,0.4,"sine",0.08,0.13,-130); }
-    else if(kind==="open"){ // открытие кейса: щелчок замка, глухой удар крышки, нарастающий свист
-      noiseHit(0,0.03,0.11,3600,2);
-      tone(110,0.18,"sine",0.2,0.02,-45);
-      noiseHit(0.03,0.06,0.06,1500,1.4);
-    }
+    else if(kind==="open"){ noiseHit(0,0.03,0.11,3600,2); tone(110,0.18,"sine",0.2,0.02,-45); noiseHit(0.03,0.06,0.06,1500,1.4); }
   }catch(e){}
 }
-
-/* easing ленты = CSS cubic-bezier(.08,.7,.1,1):
-   f(t)=время, g(t)=пройденный путь */
 function bezF(t){ return 3*(1-t)*(1-t)*t*0.08 + 3*(1-t)*t*t*0.1 + t*t*t; }
 function bezG(t){ return 3*(1-t)*(1-t)*t*0.7  + 3*(1-t)*t*t*1.0 + t*t*t; }
-function timeForFrac(p,dur){ // момент времени, когда лента прошла долю p пути
+function timeForFrac(p,dur){
   let lo=0,hi=1;
   for(let i=0;i<28;i++){ const m=(lo+hi)/2; if(bezG(m)<p) lo=m; else hi=m; }
   return bezF(lo)*dur;
 }
-function tapeTickTimes(dur,target,step){ // расписание тиков трещотки по easing ленты
+function tapeTickTimes(dur,target,step){
   const count=Math.max(1,Math.floor(target/step)), out=[];
   for(let k=1;k<=count;k++) out.push(timeForFrac(k/count,dur));
   return out;
 }
-
-/* «вжух» прокрутки: шум с фильтром, громкость следует за скоростью лент */
 let WHOOSH=null;
 function whooshStart(totalDur){
   whooshStop();
@@ -478,7 +780,7 @@ function whooshStart(totalDur){
     const PTS=14;
     for(let i=1;i<=PTS;i++){
       const p=bezG(i/PTS);
-      const speed=Math.max(0.05, 1-p); // скорость = остаток пути
+      const speed=Math.max(0.05, 1-p);
       g.gain.linearRampToValueAtTime(Math.max(0.012, 0.11*speed*speed), t+(i/PTS)*totalDur);
     }
     g.gain.linearRampToValueAtTime(0.0001, t+totalDur+0.25);
@@ -501,7 +803,7 @@ function vib(ms){ if(vibOn() && navigator.vibrate) try{ navigator.vibrate(ms); }
 
 /* ================= 1. КОЛЕСО ================= */
 let ch = 50, spinning=false, speed=1, angle=0, turbo=false;
-let selSkins = new Set(); // позиции выбранных скинов в invView
+let selSkins = new Set();
 function drawWheel(){
   document.getElementById("wheel").style.background =
     `conic-gradient(#ffd83d 0 ${ch}%, #111 ${ch}% 100%)`;
@@ -522,7 +824,7 @@ function spin(){
   if(!staked.length){ toast("Выбери скины для крутки!"); return; }
   spinning=true; speed=1;
   const win = Math.random()*100 < ch;
-  const half = ch*1.8; // половина ширины жёлтого сектора в градусах
+  const half = ch*1.8;
   const base = angle + 360*(4+Math.random()*3);
   const delta = win ? half : 180 + half;
   const target = Math.ceil((base - delta)/360)*360 + delta;
@@ -530,13 +832,12 @@ function spin(){
   animateSpin(target, ()=>{
     const res = document.getElementById("wheelRes");
     if(win){
-      // множитель цены: 35% -> x2.5, 50% -> x2, 75% -> x1.5
       const mult = ch===35 ? 2.5 : ch===50 ? 2 : 1.5;
       const upgraded = [];
       staked.forEach(s=>{
         const pos = S.inv.indexOf(s.i);
         if(pos>-1) S.inv.splice(pos,1);
-        const ns = nearestSkin(s.p*mult); // ближайший по цене — точное попадание
+        const ns = nearestSkin(s.p*mult);
         S.inv.push(ns.i); upgraded.push(ns);
       });
       res.innerHTML = "✅ Апгрейд! " + (upgraded.length<=3 ?
@@ -560,7 +861,7 @@ function animateSpin(target, done){
   const n = document.getElementById("needleRot");
   let last = performance.now(), lastTick = angle, finished = false;
   const finish = ()=>{ if(finished) return; finished=true; angle=target; drawNeedle(); done(); };
-  const safety = setTimeout(finish, 20000); // если вкладка заморозила анимацию — всё равно завершаем
+  const safety = setTimeout(finish, 20000);
   function step(now){
     if(finished) return;
     const dt=(now-last)/1000; last=now;
@@ -574,7 +875,6 @@ function animateSpin(target, done){
   }
   requestAnimationFrame(step);
 }
-/* Молния работает ВСЕГДА: во время прокрутки — ускоряет, вне её — турбо для кейсов */
 function boost(){
   if(spinning){ speed = Math.min(30, speed+3); toast("⚡ Ускорение ×"+speed.toFixed(0)); return; }
   turbo = !turbo;
@@ -624,7 +924,6 @@ function openCases(){
   const pool = casePool(selCase);
   const winners = [];
   for(let k=0;k<qty;k++){
-    // дешёвое падает чаще: куб случайного числа смещает к началу пула
     winners.push(pool[Math.floor(Math.pow(Math.random(),3)*pool.length)]);
   }
   showTapes(winners);
@@ -654,7 +953,6 @@ function showTapes(winners){
   const results = [];
   let stopped = 0, finishedFlag = false;
   const finishOnce = (res)=>{ if(finishedFlag) return; finishedFlag = true; caseTimers.forEach(clearTimeout); caseTimers=[]; whooshStop(); finishTapes(res); };
-  // звук открытия + «вжух» + трещотка, привязанные к реальной скорости лент
   const stripW0 = strips[0].parentElement.clientWidth || 320;
   const target0 = WIN_IDX*STEP + STEP/2 - stripW0/2;
   const maxDur0 = (fast ? 1.5 : 3.2) + (strips.length-1)*0.5;
@@ -671,7 +969,6 @@ function showTapes(winners){
     setTimeout(()=>{
       el.parentElement.classList.add("done");
       sfx("stop"); vib(25);
-      // подсвечиваем выигрыш ТОЛЬКО когда лента остановилась
       const winEl = el.children[WIN_IDX];
       if(winEl){ winEl.style.borderColor="#ffd83d"; winEl.style.background="#2a2410"; }
       results.push(winner);
@@ -681,7 +978,6 @@ function showTapes(winners){
       if(stopped === strips.length) finishOnce(results);
     }, dur*1000 + 60);
   });
-  // страховка: даже если браузер заморозил таймеры — результат засчитается
   const maxDur = (fast ? 1.5 : 3.2) + (winners.length-1)*0.5;
   setTimeout(()=>{ if(opening && !finishedFlag) finishOnce(winners); }, maxDur*1000 + 1500);
 }
@@ -737,7 +1033,7 @@ function renderCasePreview(){
 function toggleCpAll(){ cpAll = !cpAll; cpPage = 0; sfx("click"); renderCasePreview(); }
 function cpPageF(d){ cpPage = Math.max(0, cpPage+d); renderCasePreview(); }
 
-/* ================= 10 000 СКИНОВ (детерминированная генерация) ================= */
+/* ================= 10 500 СКИНОВ ================= */
 function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
   let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
   return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -756,21 +1052,14 @@ const SKINS = Array.from({length:10500}, (_,i)=>{
   const w = WEAPONS[Math.floor(rnd()*WEAPONS.length)];
   const f = FINISHES[Math.floor(rnd()*FINISHES.length)];
   const wear = WEARS[Math.floor(rnd()*WEARS.length)];
-  // плотная ценовая сетка от 1 до 1 000 000 000 (первые 10 000):
-  // между соседними ценами разница всего ~0.2%, поэтому апгрейд
-  // всегда находит скин ровно нужной стоимости — без «склеек»
   let p;
   if(i<10000) p = Math.round(Math.pow(10, 9*i/9999));
-  // 500 жёлтых легендарок: от 1 млрд до 100 млрд, шаг ~0.9%
   else p = Math.round(1000000000 * Math.pow(100, (i-10000)/499));
   p = Math.max(1, Math.min(100000000000, p));
   const r = p<10 ? 0 : p<1000 ? 1 : p<50000 ? 2 : p<2000000 ? 3 : p<100000000 ? 4 : 5;
   return { i, em:w[0], nm:`${w[1]} | ${f}`, wear, r, p };
 });
-// легендарный топ-скин — ровно 100 000 000 000 🪙
 SKINS[10499] = { i:10499, em:"🔪", nm:"M9 Bayonet | Пепел", wear:"Прям. с завода", r:5, p:100000000000 };
-
-// ближайший по цене скин (бинарный поиск по отсортированной сетке)
 const BY_PRICE = [...SKINS].sort((a,b)=>a.p-b.p);
 function nearestSkin(target){
   let lo=0, hi=BY_PRICE.length-1;
@@ -779,7 +1068,7 @@ function nearestSkin(target){
   return Math.abs(a.p-target) <= Math.abs(b.p-target) ? a : b;
 }
 
-/* ================= МАРКЕТ: фильтры, сортировка, поиск, страницы ================= */
+/* ================= МАРКЕТ ================= */
 let mSort="desc", mRare=-1, mQuery="", mPage=0;
 const PER = 30;
 function mktChange(){
@@ -823,18 +1112,18 @@ function buySkin(i){
 /* ================= ИНВЕНТАРЬ ================= */
 let invView = [];
 function renderInv(){
-  const inv = S.inv.map(i=>SKINS[i]).sort((a,b)=>b.p-a.p);
+  const inv = S.inv.map(i=>SKINS[i]).filter(Boolean).sort((a,b)=>b.p-a.p);
   invView = inv;
   document.getElementById("invCount").textContent = inv.length;
   document.getElementById("invSum").textContent = fmt(inv.reduce((a,s)=>a+s.p,0))+" 🪙";
   const box = document.getElementById("inv");
-  if(!inv.length){ box.innerHTML = `<p class="muted">Пока пусто. Купи скин в маркете или выбей из кейса!</p>`; renderUpgInv(); renderContractInv(); return; }
+  if(!inv.length){ box.innerHTML = `<p class="muted">Пока пусто. Купи скин в маркете или выбей из кейса!</p>`; renderUpgInv(); renderContractInv(); renderTradeSel(); return; }
   box.innerHTML = inv.map((s,k)=>
     `<div class="skin"><div class="em">${s.em}</div><div>${s.nm}</div>
      <div class="r" style="color:${RARE_C[s.r]}">${RARE[s.r]}</div>
      <div class="prc">${fmt(s.p)} 🪙</div>
      <button onclick="sellSkin(${k})">Продать</button></div>`).join("");
-  renderUpgInv(); renderContractInv();
+  renderUpgInv(); renderContractInv(); renderTradeSel();
 }
 function sellSkin(k){
   const s = invView[k];
@@ -852,7 +1141,7 @@ function renderUpgInv(){
   if(!box) return;
   updateSpinBtn();
   if(!invView.length){
-    box.innerHTML = `<p class="muted">Нет скинов — купи в маркете или выбей из кейса. Крутка без скинов стоит 100 🪙.</p>`;
+    box.innerHTML = `<p class="muted">Нет скинов — купи в маркете или выбей из кейса.</p>`;
     return;
   }
   box.innerHTML = invView.map((s,k)=>
@@ -867,7 +1156,7 @@ function pickUpgSkin(k){
 }
 function clearUpgSel(){ selSkins.clear(); renderUpgInv(); }
 
-/* ================= КОНТРАКТ: 3 скина, шанс 50/50 ================= */
+/* ================= КОНТРАКТ ================= */
 let contractSel = new Set(), contractBusy = false;
 function renderContractInv(){
   const box = document.getElementById("contractInv"); if(!box) return;
@@ -896,7 +1185,6 @@ function makeContract(){
   contractBusy = true;
   const sum = staked.reduce((a,s)=>a+s.p,0);
   const win = Math.random()<0.5;
-  // честные коэффициенты: выигрыш +25..50% к сумме, проигрыш 40..60% от суммы
   const target = win ? sum*(1.25+Math.random()*0.25) : sum*(0.4+Math.random()*0.2);
   staked.forEach(s=>{ const pos=S.inv.indexOf(s.i); if(pos>-1) S.inv.splice(pos,1); });
   const ns = nearestSkin(target);
@@ -916,22 +1204,7 @@ function updateSpinBtn(){
   if(b) b.textContent = selSkins.size ? `КРУТИТЬ (${selSkins.size} шт.)` : "КРУТИТЬ";
 }
 
-/* ================= 3. ПРОФИЛЬ ================= */
-const DEMO_TOP = [
-  {n:"DragonLord", c:8421000},{n:"xX_ProkoXx", c:3110500},{n:"МамкинРолл", c:999800},
-  {n:"SkinHunter", c:720000},{n:"CaseGod", c:455000},{n:"NeFue", c:298000},
-  {n:"Тапок666", c:154000},{n:"AimWrecker", c:87300},{n:"SilverSteve", c:41200},
-  {n:"NoobMaster", c:9500}
-];
-function renderLB(){
-  const all = [...DEMO_TOP, {n:(document.getElementById("nickName").dataset.nick||"Гость")+" (ты)", c:S.bal, me:true}]
-    .sort((a,b)=>b.c-a.c).slice(0,10);
-  document.getElementById("lb").innerHTML = all.map((r,i)=>
-    `<tr class="${r.me?"me":""}"><td class="num">${["🥇","🥈","🥉"][i]||"#"+(i+1)}</td>
-     <td>${r.n}</td><td class="coins">${fmt(r.c)} 🪙</td></tr>`).join("");
-}
-renderLB();
-
+/* ================= 3. ПРОФИЛЬ: ЗАДАНИЯ ================= */
 const QUESTS = [
   {id:"cases", d:"d", nm:"Открыть 5 кейсов", goal:5, rw:150},
   {id:"upgrades", d:"d", nm:"Выиграть 2 апгрейда на колесе", goal:2, rw:200},
@@ -989,7 +1262,7 @@ document.getElementById("clickCircle").addEventListener("pointerdown", e=>{
   document.getElementById("clickCount").textContent = S.clicks;
 });
 
-/* ================= 4. ЕЩЁ: настройки ================= */
+/* ================= 4. ЕЩЁ: НАСТРОЙКИ ================= */
 function tog(id){
   document.getElementById(id).classList.toggle("on");
   if(id==="swTheme") applyTheme();
@@ -1011,33 +1284,24 @@ function loadSettings(){
   });
 }
 function updNick(){
-  const el = document.getElementById("nickName");
-  el.textContent = (el.dataset.av||"🙂")+" "+(el.dataset.nick||"Гость");
+  document.getElementById("nickName").textContent = (S.av||"🙂")+" "+(S.nick||"Гость");
 }
-function changeNick(){
-  const el = document.getElementById("nickName");
-  const n = prompt("Твой ник:", el.dataset.nick||"Гость");
+async function changeNick(){
+  const n = prompt("Твой ник (3–16 символов):", S.nick||"");
   if(n===null) return;
-  el.dataset.nick = (n.trim()||"Гость").slice(0,16);
-  localStorage.setItem("skinup_nick", el.dataset.nick);
-  updNick(); renderLB();
+  try{
+    await claimNick(n);
+    await fbDB.ref('users/'+USER.uid).update({ nick:S.nick });
+    toast("Ник изменён: "+S.nick);
+  }catch(e){ toast(e.message||"Не удалось сменить ник"); }
 }
 function changeAvatar(){
   const e=["🙂","😎","🦊","🐸","👽","🤖","🐱","🐉"];
-  const el = document.getElementById("nickName");
-  el.dataset.av = e[Math.floor(Math.random()*e.length)];
-  localStorage.setItem("skinup_avatar", el.dataset.av);
-  updNick(); toast("Аватар сменён: "+el.dataset.av);
+  S.av = e[Math.floor(Math.random()*e.length)];
+  save(); updNick(); toast("Аватар сменён: "+S.av);
 }
-function loadProfile(){
-  const el = document.getElementById("nickName");
-  el.dataset.nick = localStorage.getItem("skinup_nick")||"Гость";
-  el.dataset.av = localStorage.getItem("skinup_avatar")||"🙂";
-  updNick();
-}
-function logout(){ toast("Выход: в реальной игре — Firebase signOut"); }
-function resetAll(){ if(confirm("Сбросить весь прогресс?")){
-  localStorage.removeItem("skinup_demo_v2"); location.reload(); } }
+function resetAll(){ if(confirm("Сбросить локальные настройки? Прогресс на сервере останется.")){
+  localStorage.removeItem("skinup_settings"); location.reload(); } }
 
 /* ================= НАВИГАЦИЯ ================= */
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
@@ -1047,11 +1311,10 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   document.getElementById(b.dataset.p).classList.add("active");
   vib(10); sfx("click");
   if(b.dataset.p==="p-upgrade") renderUpgInv();
-  if(b.dataset.p==="p-profile") renderLB();
+  if(b.dataset.p==="p-profile"){ renderLB(); renderTradeSel(); }
   if(b.dataset.p==="p-market") renderMarket();
   if(b.dataset.p==="p-inv") renderInv();
 }));
-
 
 /* ================= ПРОМОКОДЫ ================= */
 const PROMOS = {
@@ -1094,10 +1357,18 @@ function applyPromo(){
 }
 
 /* старт */
-loadSettings(); applyTheme(); loadProfile();
+loadSettings(); applyTheme(); updNick();
 document.getElementById("bal").textContent = S.bal;
 document.getElementById("clickCount").textContent = S.clicks;
-renderCases(); renderCasePreview(); renderMarket(); renderInv();
+renderCases(); renderCasePreview(); renderMarket(); renderInv(); renderLB();
+window.addEventListener("beforeunload", ()=>{ if(USER){ clearTimeout(cloudSaveTimer); cloudSaveNowDirect(); } });
+function cloudSaveNowDirect(){
+  try{
+    fbDB.ref('users/'+USER.uid).update({
+      bal:S.bal, inv:S.inv, nick:S.nick||"", av:S.av||"🙂"
+    });
+  }catch(e){}
+}
 </script>
 </body>
 </html>
