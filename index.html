@@ -104,27 +104,6 @@
   .spin-controls .bolt.on { background:#ffd83d; color:#111; }
   #upgPicker { margin-top:10px; }
 
-  /* ===== КРУТКА АПГРЕЙДА (как в CS GO) ===== */
-  .upg-ov { position:fixed; inset:0; background:rgba(5,5,10,.97); z-index:65;
-            display:none; flex-direction:column; padding:14px; overflow-y:auto; }
-  .upg-ov.show { display:flex; }
-  .upg-ov h3 { text-align:center; color:#ffd83d; margin:6px 0 4px; }
-  .roll-tape { position:relative; height:120px; overflow:hidden; background:#0f0f18;
-               border:1px solid #2a2a3a; border-radius:12px; margin:14px auto 8px; max-width:560px; width:100%; }
-  .roll-tape .strip { position:absolute; top:0; left:0; height:100%; display:flex; align-items:center; will-change:transform; }
-  .rblock { flex:0 0 90px; margin-right:6px; height:104px; border-radius:10px;
-            display:flex; align-items:center; justify-content:center; font-size:30px; }
-  .rblock.w { background:linear-gradient(180deg,#4cd964,#2a9d3f); box-shadow:inset 0 0 18px rgba(0,0,0,.25); }
-  .rblock.l { background:linear-gradient(180deg,#ff5a52,#c22a22); box-shadow:inset 0 0 18px rgba(0,0,0,.25); }
-  .rblock.hit { outline:4px solid #ffd83d; outline-offset:-4px; }
-  .roll-tape .marker { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px;
-                       background:#ffd83d; box-shadow:0 0 10px #ffd83d; z-index:3; }
-  .roll-tape::before, .roll-tape::after { content:""; position:absolute; top:0; bottom:0; width:70px; z-index:2; pointer-events:none; }
-  .roll-tape::before { left:0; background:linear-gradient(90deg,#0f0f18,transparent); }
-  .roll-tape::after { right:0; background:linear-gradient(270deg,#0f0f18,transparent); }
-  .upg-res { text-align:center; font-weight:800; min-height:44px; margin:6px 0 10px; color:#ffd83d; font-size:15px; }
-  .upg-res .sm { display:block; font-size:12px; font-weight:400; color:#bbb; margin-top:4px; }
-
   /* ===== 2. КЕЙСЫ ===== */
   .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
   .case-card { background:#181824; border:1px solid #2a2a3a; border-radius:12px;
@@ -513,14 +492,6 @@
     </div>
   </section>
 </main>
-
-<!-- ===== КРУТКА АПГРЕЙДА (CS GO) ===== -->
-<div class="upg-ov" id="upgOv">
-  <h3>🎡 Прокачка</h3>
-  <div class="roll-tape"><div class="strip" id="upgStrip"></div><div class="marker"></div></div>
-  <div class="upg-res" id="upgRes"></div>
-  <button class="primary" id="upgClose" style="display:none;margin:0 auto;max-width:280px;" onclick="closeUpgRoll()">ЗАБРАТЬ</button>
-</div>
 
 <!-- ===== ОВЕРЛЕЙ ЛЕНТ КЕЙСОВ ===== -->
 <div class="tapes-ov" id="tapesOv">
@@ -1029,84 +1000,32 @@ function spin(){
   const base = angle + 360*(4+Math.random()*3);
   const target = Math.ceil((base - delta)/360)*360 + delta;
   sfx("click"); vib(15);
-  animateSpin(target, ()=>{ showUpgRoll(win, staked); });
-}
-/* Крутка в стиле CS GO: лента зелёных и красных блоков, тики, торможение */
-let upgTimers = [];
-function showUpgRoll(win, staked){
-  const ov = document.getElementById("upgOv");
-  const strip = document.getElementById("upgStrip");
-  const resEl = document.getElementById("upgRes");
-  const closeBtn = document.getElementById("upgClose");
-  const N = 80, WIN_IDX = 62, STEP = 96;
-  let html = "";
-  for(let j=0;j<N;j++){
-    const cls = (j===WIN_IDX) ? (win ? "w" : "l") : (Math.random()<0.5 ? "w" : "l");
-    html += `<div class="rblock ${cls}">${cls==="w"?"✅":"💀"}</div>`;
-  }
-  strip.innerHTML = html;
-  strip.style.transition = "none";
-  strip.style.transform = "translateX(0)";
-  resEl.innerHTML = "Крутка…";
-  closeBtn.style.display = "none";
-  ov.classList.add("show");
-  const tapeW = strip.parentElement.clientWidth || 320;
-  const target = WIN_IDX*STEP + STEP/2 - tapeW/2;
-  const dur = 3.8;
-  sfx("open"); whooshStart(dur);
-  upgTimers.forEach(clearTimeout);
-  upgTimers = tapeTickTimes(dur, target, STEP).map(tt=>
-    setTimeout(()=>{ if(document.getElementById("upgOv").classList.contains("show")){ sfx("tick"); vib(4); } }, tt*1000));
-  requestAnimationFrame(()=>{
-    strip.style.transition = `transform ${dur}s cubic-bezier(.08,.7,.1,1)`;
-    strip.style.transform = `translateX(-${target}px)`;
+  animateSpin(target, ()=>{
+    const res = document.getElementById("wheelRes");
+    if(win){
+      const upgraded = [];
+      staked.forEach(s=>{
+        const pos = S.inv.indexOf(s.i);
+        if(pos>-1) S.inv.splice(pos,1);
+        const ns = nearestSkin(s.p*betMult());
+        S.inv.push(ns.i); upgraded.push(ns);
+      });
+      res.innerHTML = "✅ Апгрейд! " + (upgraded.length<=3 ?
+        upgraded.map(s=>`<span style="color:${RARE_C[s.r]}">${s.nm}</span>`).join(", ")
+        : `${upgraded.length} скинов на ${fmt(upgraded.reduce((a,s)=>a+s.p,0))} 🪙`);
+      res.style.color = "#8f8";
+      S.upgrades++; bumpQuest("upgrades",1);
+      sfx("win"); vib([30,60,30]);
+    } else {
+      staked.forEach(s=>{ const pos=S.inv.indexOf(s.i); if(pos>-1) S.inv.splice(pos,1); });
+      res.textContent = `💀 Проигрыш — сгорело скинов: ${staked.length}`;
+      res.style.color = "#ff6b6b";
+      S.wheelLose++;
+      sfx("lose"); vib(120);
+    }
+    save(); spinning=false;
+    selSkins.clear(); renderBetCards(); renderInv();
   });
-  upgTimers.push(setTimeout(()=>{ resolveUpgRoll(win, staked, WIN_IDX); }, dur*1000 + 140));
-}
-function resolveUpgRoll(win, staked, winIdx){
-  whooshStop();
-  upgTimers.forEach(clearTimeout); upgTimers = [];
-  sfx("stop"); vib(25);
-  const strip = document.getElementById("upgStrip");
-  const hit = strip.children[winIdx];
-  if(hit) hit.classList.add("hit");
-  const resEl = document.getElementById("upgRes");
-  const closeBtn = document.getElementById("upgClose");
-  const wRes = document.getElementById("wheelRes");
-  if(win){
-    const upgraded = [];
-    staked.forEach(s=>{
-      const pos = S.inv.indexOf(s.i);
-      if(pos>-1) S.inv.splice(pos,1);
-      const ns = nearestSkin(s.p*betMult());
-      S.inv.push(ns.i); upgraded.push(ns);
-    });
-    const names = upgraded.length<=3 ?
-      upgraded.map(s=>`<span style="color:${RARE_C[s.r]}">${s.nm}</span>`).join(", ")
-      : `${upgraded.length} скинов на ${fmt(upgraded.reduce((a,s)=>a+s.p,0))} 🪙`;
-    resEl.innerHTML = `✅ Апгрейд удался! ${names}`;
-    wRes.innerHTML = "✅ Апгрейд! " + names;
-    wRes.style.color = "#8f8";
-    S.upgrades++; bumpQuest("upgrades",1);
-    sfx("win"); vib([30,60,30]);
-  } else {
-    staked.forEach(s=>{ const pos=S.inv.indexOf(s.i); if(pos>-1) S.inv.splice(pos,1); });
-    resEl.innerHTML = `💀 Проигрыш`;
-    resEl.innerHTML += `<span class="sm">Сгорело скинов: ${staked.length}</span>`;
-    wRes.textContent = `💀 Проигрыш — сгорело скинов: ${staked.length}`;
-    wRes.style.color = "#ff6b6b";
-    S.wheelLose++;
-    sfx("lose"); vib(120);
-  }
-  save();
-  closeBtn.style.display = "block";
-}
-function closeUpgRoll(){
-  upgTimers.forEach(clearTimeout); upgTimers = [];
-  whooshStop();
-  document.getElementById("upgOv").classList.remove("show");
-  spinning = false;
-  selSkins.clear(); renderBetCards(); renderInv();
 }
 function animateSpin(target, done){
   const n = document.getElementById("needleRot");
