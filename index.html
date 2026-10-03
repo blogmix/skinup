@@ -627,6 +627,7 @@ function renderTradeSel(){
 function pickTradeSkin(k){
   if(tradeSel.has(k)) tradeSel.delete(k); else tradeSel.add(k);
   vib(8); sfx("click"); renderTradeSel();
+}
 async function sendTrade(){
   if(!USER) return;
   const nick = (document.getElementById("tradeNick").value||"").trim();
@@ -655,8 +656,6 @@ async function sendTrade(){
     sfx("coin");
   }catch(e){ console.warn(e); toast("Ошибка отправки трейда"); }
 }
-function listenTrades(){
-
 function listenTrades(){
   if(tradesRef) tradesRef.off();
   tradesRef = fbDB.ref('trades/'+USER.uid);
