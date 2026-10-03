@@ -67,7 +67,7 @@
            background:radial-gradient(circle at 50% 35%, #1c1c2a, #0e0e16);
            border:1px solid #2a2a3a; z-index:4;
            display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .wc-pct { font-weight:900; font-size:42px; line-height:1; color:#8f8; }
+  .wc-pct { font-weight:900; font-size:42px; line-height:1; color:#ffd83d; }
   .wc-sub { font-size:12.5px; color:#999; margin-top:6px; }
   .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
   .needle { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
@@ -79,7 +79,7 @@
   .lbl-top { top:-4px; left:50%; transform:translateX(-50%); }
   .lbl-l { left:-8px; top:50%; transform:translateY(-50%); }
   .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
-  .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ff8a80; }
+  .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ffd83d; }
   .wheel-result { text-align:center; font-weight:800; font-size:18px; min-height:26px; margin-top:6px; }
   .spin-controls { display:flex; gap:8px; }
   .spin-controls button { flex:1; }
@@ -260,7 +260,7 @@
   <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
     <h2>🎡 Колесо апгрейда</h2>
-    <p class="muted">Цветной сектор сверху — твой шанс на успех, красный снизу — проигрыш. Колесо стоит на месте, стрелка бежит по его краю: где остановится — такой и результат.</p>
+    <p class="muted">Цветной сектор снизу — твой шанс на успех. Чёрный сверху — зона проигрыша. Колесо стоит на месте, стрелка бежит по краю: попала в цвет — апгрейд, в чёрное — сгорело.</p>
     <div class="chances" id="chances">
       <button data-ch="35">35%</button>
       <button data-ch="50" class="on">50%</button>
@@ -285,7 +285,7 @@
       <button class="primary" id="btnSpin" onclick="spin()">КРУТИТЬ</button>
       <button class="bolt" id="btnBolt" onclick="boost()">⚡</button>
     </div>
-    <p class="muted" style="margin-top:8px;">⚡ работает всегда: во время прокрутки — ускоряет колесо, в кейсах — включает турбо-режим лент.</p>
+    <p class="muted" style="margin-top:8px;">⚡ — переключатель турбо: нажал — кейсы крутятся быстро, нажал ещё раз — вернулась обычная скорость. Действует на все кейсы.</p>
     <h3>Скины на прокрутку</h3>
     <p class="muted">Нажми на скин — он выделится жёлтой рамкой. Выбранные скины крутятся все вместе: при выигрыше каждый из них заменяется на более дорогой, при проигрыше — сгорает.</p>
     <div class="inv-grid" id="upgInv"></div>
@@ -318,7 +318,7 @@
   <!-- ===== МАРКЕТ ===== -->
   <section id="p-market">
     <h2>🛒 Магазин скинов</h2>
-    <p class="muted">10 500 скинов: от 1 🪙 до 100 000 000 000 🪙. Фильтруй, сортируй, ищи. M9 Bayonet | Пепел нельзя купить — только выбить из Божественного кейса или получить по промокоду.</p>
+    <p class="muted">10 500 скинов: от 1 🪙 до 100 000 000 000 🪙. M9 Bayonet | Пепел в продаже нет — его можно получить только по секретному промокоду.</p>
     <div class="mkt-bar">
       <select id="mktSort" onchange="mktChange()">
         <option value="desc">Сначала дороже</option>
@@ -352,7 +352,7 @@
     <button class="primary" style="width:100%;margin-bottom:10px;" onclick="sellAll()">💸 ПРОДАТЬ ВСЁ</button>
     <div class="inv-grid" id="inv"></div>
     <h3 style="margin-top:18px;">🔗 Контракт</h3>
-    <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин дороже суммы всех трёх, не повезёт — дешевле, но он останется у тебя.</p>
+    <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин заметно дороже суммы всех трёх, не повезёт — останется лишь жалкий остаток.</p>
     <div class="inv-grid" id="contractInv"></div>
     <div class="inv-sum">Выбрано: <b id="cCount">0</b>/3 · Сумма: <b id="cSum">0 🪙</b></div>
     <button class="primary" style="width:100%" onclick="makeContract()">ЗАКЛЮЧИТЬ КОНТРАКТ</button>
@@ -412,7 +412,8 @@
     <h2>⚙️ Настройки аккаунта</h2>
     <div class="card">
       <div class="set-row"><span>🙂 Ник</span><span id="nickName" style="cursor:pointer" onclick="changeNick()">🙂 Гость</span></div>
-      <div class="set-row"><span>🖼 Аватар</span><button onclick="changeAvatar()">Сменить</button></div>
+      <div class="set-row"><span>🖼 Аватар</span><button onclick="toggleAvatarPicker()">Выбрать</button></div>
+      <div id="avPicker" style="display:none;flex-wrap:wrap;gap:8px;padding:12px 0 4px;"></div>
       <div class="set-row"><span>👤 Аккаунт</span><span id="accEmail" style="color:#888;font-size:12px;"></span></div>
       <div class="set-row"><span>🚪 Выход</span><button onclick="logout()">Выйти</button></div>
     </div>
@@ -862,10 +863,12 @@ function vib(ms){ if(vibOn() && navigator.vibrate) try{ navigator.vibrate(ms); }
 let ch = 50, spinning=false, speed=1, angle=0, turbo=false;
 let selSkins = new Set();
 function drawWheel(){
-  const winHalf = ch*0.9, winSpan = ch*1.8;
+  // чёрная зона проигрыша — сверху, цветная зона выигрыша — снизу
+  const lossSpan = (100-ch)*3.6;   // градусов чёрного
+  const half = lossSpan/2;
   document.getElementById("wheel").style.background =
-    `conic-gradient(from -${winHalf}deg, #ff9d00 0deg, #ffd83d ${winHalf}deg, ` +
-    `#ff9d00 ${winSpan}deg, #ff3b30 180deg, #ff9d00 ${360-winSpan}deg, #ff9d00 360deg)`;
+    `conic-gradient(from -${half}deg, #0b0b12 0deg, #14141f ${lossSpan}deg, ` +
+    `#ff9d00 ${lossSpan+4}deg, #ffd83d 180deg, #ff9d00 ${356-lossSpan}deg, #0b0b12 360deg)`;
 }
 function updateWheelInfo(){
   const p = document.getElementById("wheelPct");
@@ -891,9 +894,10 @@ function spin(){
   if(!staked.length){ toast("Выбери скины для крутки!"); return; }
   spinning=true; speed=1;
   const win = Math.random()*100 < ch;
-  // стрелка внизу: 0 = низ (проигрыш), 180 = верх (центр выигрыша)
-  const jitter = win ? (Math.random()-0.5)*1.2*ch : (Math.random()-0.5)*1.6*(100-ch);
-  const delta = (win ? 180 : 0) + jitter;
+  // стрелка внизу: 0 = низ (цветная зона выигрыша), 180 = верх (чёрная зона проигрыша)
+  const delta = win
+    ? (Math.random()-0.5)*1.7*ch
+    : 180 + (Math.random()-0.5)*1.6*(100-ch);
   const base = angle + 360*(4+Math.random()*3);
   const target = Math.ceil((base - delta)/360)*360 + delta;
   sfx("click"); vib(15);
@@ -944,12 +948,11 @@ function animateSpin(target, done){
   requestAnimationFrame(step);
 }
 function boost(){
-  if(spinning){ speed = Math.min(30, speed+3); toast("⚡ Ускорение ×"+speed.toFixed(0)); return; }
   turbo = !turbo;
   document.getElementById("btnBolt").classList.toggle("on", turbo);
   document.getElementById("swFast").classList.toggle("on", turbo);
   saveSettings();
-  toast(turbo ? "⚡ Турбо: кейсы крутятся быстро" : "⚡ Турбо выключено");
+  toast(turbo ? "⚡ Турбо включён — кейсы крутятся быстро" : "⚡ Турбо выключен");
 }
 
 /* ================= 2. КЕЙСЫ ================= */
@@ -968,7 +971,7 @@ const CASES = [
 let selCase = 0, qty = 1, opening = false, caseTimers = [];
 function casePool(ci){
   const c = CASES[ci];
-  const pool = SKINS.filter(s=>s.p>=c.lo && s.p<=c.hi);
+  const pool = SKINS.filter(s=>s.p>=c.lo && s.p<=c.hi && s.i!==M9_ID);
   return pool.length ? pool : SKINS.slice(0,500);
 }
 function renderCases(){
@@ -1128,7 +1131,8 @@ const SKINS = Array.from({length:10500}, (_,i)=>{
   return { i, em:w[0], nm:`${w[1]} | ${f}`, wear, r, p };
 });
 SKINS[10499] = { i:10499, em:"🔪", nm:"M9 Bayonet | Пепел", wear:"Прям. с завода", r:5, p:100000000000 };
-const BY_PRICE = [...SKINS].sort((a,b)=>a.p-b.p);
+// M9 исключён из «ближайших по цене» — апгрейд и контракт его никогда не выдают
+const BY_PRICE = SKINS.filter(s=>s.i!==M9_ID).sort((a,b)=>a.p-b.p);
 function nearestSkin(target){
   let lo=0, hi=BY_PRICE.length-1;
   while(lo<hi){ const m=(lo+hi)>>1; if(BY_PRICE[m].p<target) lo=m+1; else hi=m; }
@@ -1170,7 +1174,7 @@ function renderMarket(){
                    : `<button class="primary" onclick="buySkin(${s.i})">Купить</button>`}</div>`).join("");
 }
 function buySkin(i){
-  if(i===M9_ID){ toast("Нет в наличии — только из Божественного кейса или по промокоду"); return; }
+  if(i===M9_ID){ toast("Нет в наличии — только по секретному промокоду"); return; }
   const s = SKINS[i];
   if(S.bal<s.p){ toast("Мало монет!"); return; }
   addBal(-s.p); S.inv.push(i); save();
@@ -1266,7 +1270,7 @@ function makeContract(){
   contractBusy = true;
   const sum = staked.reduce((a,s)=>a+s.p,0);
   const win = Math.random()<0.5;
-  const target = win ? sum*(1.25+Math.random()*0.25) : sum*(0.4+Math.random()*0.2);
+  const target = win ? sum*(1.4+Math.random()*0.4) : sum*(0.15+Math.random()*0.15);
   staked.forEach(s=>{ const pos=S.inv.indexOf(s.i); if(pos>-1) S.inv.splice(pos,1); });
   const ns = nearestSkin(target);
   S.inv.push(ns.i);
@@ -1376,10 +1380,21 @@ async function changeNick(){
     toast("Ник изменён: "+S.nick);
   }catch(e){ toast(e.message||"Не удалось сменить ник"); }
 }
-function changeAvatar(){
-  const e=["🙂","😎","🦊","🐸","👽","🤖","🐱","🐉"];
-  S.av = e[Math.floor(Math.random()*e.length)];
-  save(); updNick(); toast("Аватар сменён: "+S.av);
+const AVATARS = ["🙂","😎","🦊","🐸","👽","🤖","🐱","🐉","🔥","⭐","🎃","👻"];
+function toggleAvatarPicker(){
+  const p = document.getElementById("avPicker");
+  const show = p.style.display==="none" || !p.style.display;
+  p.style.display = show ? "flex" : "none";
+  if(show) renderAvatarPicker();
+}
+function renderAvatarPicker(){
+  document.getElementById("avPicker").innerHTML = AVATARS.map(a=>
+    `<button style="width:44px;height:44px;font-size:22px;${S.av===a?"outline:2px solid #ffd83d;":""}"
+      onclick="setAvatar('${a}')">${a}</button>`).join("");
+}
+function setAvatar(a){
+  S.av = a; save(); updNick(); renderAvatarPicker();
+  sfx("click"); toast("Аватар: "+a);
 }
 function resetAll(){ if(confirm("Сбросить локальные настройки? Прогресс на сервере останется.")){
   localStorage.removeItem("skinup_settings"); location.reload(); } }
@@ -1427,7 +1442,7 @@ function applyPromo(){
     msg.innerHTML = `✅ Готово! Начислено <b>${fmt(pr.n)} 🪙</b>`;
     toast(`Промокод: +${fmt(pr.n)} 🪙`);
   } else {
-    const m9 = SKINS.find(x=>x.nm.indexOf("M9")===0);
+    const m9 = SKINS.find(x=>x.i===M9_ID);
     S.inv.push(m9.i);
     save(); renderInv();
     msg.innerHTML = `✅ Готово! Получен <b>${m9.nm}</b> (${fmt(m9.p)} 🪙)`;
