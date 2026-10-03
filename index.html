@@ -348,6 +348,7 @@
     <h2>👤 Профиль</h2>
     <div class="card">
       <div id="top10wrap"><h3>🏆 Топ-10 игроков</h3></div>
+      <div class="inv-sum">👥 Всего игроков: <b id="playersTotal">…</b></div>
       <table class="lb" id="lb"></table>
       <p class="muted" style="margin-top:8px;font-size:11px;" id="lbNote">Живой топ-10 из базы данных.</p>
     </div>
@@ -586,9 +587,16 @@ function logout(){
 }
 
 /* ================= ЖИВОЙ ТОП-10 ================= */
+function startPlayers(){
+  fbDB.ref('users').on('value', snap=>{
+    const el = document.getElementById("playersTotal");
+    if(el) el.textContent = fmt(snap.numChildren());
+  });
+}
 function startLB(){
   if(lbListenerOn || !USER) return;
   lbListenerOn = true;
+  startPlayers();
   fbDB.ref('users').orderByChild('bal').limitToLast(10).on('value', snap=>{
     lbRows = [];
     snap.forEach(ch=>{ const v=ch.val()||{};
