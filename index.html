@@ -164,6 +164,14 @@
   .trade-in .tbtns { display:flex; gap:8px; margin-top:6px; }
   .trade-in button { flex:1; padding:7px 4px; font-size:12px; }
 
+  .social-row { display:flex; align-items:center; gap:10px; padding:10px 0;
+                border-bottom:1px solid #222; }
+  .social-row:last-child { border-bottom:none; }
+  .social-row .ic { font-size:24px; }
+  .social-row .info { flex:1; }
+  .social-row .nm { font-weight:700; font-size:14px; }
+  .social-row .ds { font-size:12px; color:#888; }
+
   .clicker-wrap { text-align:center; }
   .click-circle { width:110px; height:110px; border-radius:50%; margin:14px auto;
                   background:radial-gradient(circle at 35% 30%, #ffe98a, #ffd83d 60%, #d9a800);
@@ -206,7 +214,7 @@
   body.light nav { border-top-color:#d9dce3; }
   body.light .card, body.light .skin, body.light .case-card { color:#1c1c28; }
   body.light .muted { color:#666; }
-  body.light .lb td, body.light .quest, body.light .set-row { border-bottom-color:#e4e6ec; }
+  body.light .lb td, body.light .quest, body.light .set-row, body.light .social-row { border-bottom-color:#e4e6ec; }
   body.light .lb tr.me td { background:#fff6d6; color:#8a6d00; }
   body.light .tag { background:#eceef3; color:#555; }
   body.light .prc, body.light .case-card .pr, body.light .tapes-res { color:#b8860b; }
@@ -260,7 +268,7 @@
   <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
     <h2>🎡 Колесо апгрейда</h2>
-    <p class="muted">Цветной сектор снизу — твой шанс на успех. Чёрный сверху — зона проигрыша. Колесо стоит на месте, стрелка бежит по краю: попала в цвет — апгрейд, в чёрное — сгорело.</p>
+    <p class="muted">Цветной сектор снизу — зона выигрыша. Чёрный сверху — зона проигрыша, граница между ними чёткая. Колесо стоит на месте, стрелка бежит по краю: попала в цвет — апгрейд, в чёрное — сгорело.</p>
     <div class="chances" id="chances">
       <button data-ch="35">35%</button>
       <button data-ch="50" class="on">50%</button>
@@ -383,6 +391,25 @@
       <div class="inv-sum">Выбрано: <b id="tCount">0</b> · Сумма: <b id="tSum">0 🪙</b></div>
       <h3 style="margin-top:14px;">📥 Входящие трейды</h3>
       <div id="tradesIn"><p class="muted">Пока пусто.</p></div>
+    </div>
+    <div class="card">
+      <h3>📡 Соцсети</h3>
+      <div class="social-row">
+        <div class="ic">✈️</div>
+        <div class="info">
+          <div class="nm">Telegram-канал SkinUp</div>
+          <div class="ds">Новости, апдейты и розыгрыши</div>
+        </div>
+        <a href="https://t.me/SkinUpRu" target="_blank" rel="noopener"><button>Открыть</button></a>
+      </div>
+      <div class="social-row" style="border-bottom:none;">
+        <div class="ic">🎁</div>
+        <div class="info">
+          <div class="nm">Награда за подписку</div>
+          <div class="ds">Подпишись на канал — получи 50 000 🪙 (один раз)</div>
+        </div>
+        <button class="primary" id="tgClaimBtn" onclick="claimTgReward()">50 000 🪙</button>
+      </div>
     </div>
     <div class="card">
       <h3>🎟 Промокод</h3>
@@ -595,7 +622,7 @@ async function loadUserData(){
     document.getElementById("bal").textContent = S.bal;
     document.getElementById("clickCount").textContent = S.clicks;
     updNick(); renderInv(); startLB();
-    listenTrades();
+    listenTrades(); updTgBtn();
     if(!S.nick) document.getElementById("nickOv").classList.add("show");
   }catch(e){
     console.warn("loadUserData:", e);
@@ -863,12 +890,15 @@ function vib(ms){ if(vibOn() && navigator.vibrate) try{ navigator.vibrate(ms); }
 let ch = 50, spinning=false, speed=1, angle=0, turbo=false;
 let selSkins = new Set();
 function drawWheel(){
-  // чёрная зона проигрыша — сверху, цветная зона выигрыша — снизу
+  // чёрная зона проигрыша сверху, цветная зона выигрыша снизу, граница резкая
   const lossSpan = (100-ch)*3.6;   // градусов чёрного
   const half = lossSpan/2;
   document.getElementById("wheel").style.background =
-    `conic-gradient(from -${half}deg, #0b0b12 0deg, #14141f ${lossSpan}deg, ` +
-    `#ff9d00 ${lossSpan+4}deg, #ffd83d 180deg, #ff9d00 ${356-lossSpan}deg, #0b0b12 360deg)`;
+    `conic-gradient(from -${half}deg, ` +
+    `#0b0b12 0deg ${lossSpan}deg, ` +
+    `#ffd83d ${lossSpan}deg 180deg, ` +
+    `#ff9d00 180deg ${356-lossSpan}deg, ` +
+    `#0b0b12 ${356-lossSpan}deg 360deg)`;
 }
 function updateWheelInfo(){
   const p = document.getElementById("wheelPct");
@@ -1347,6 +1377,29 @@ document.getElementById("clickCircle").addEventListener("pointerdown", e=>{
   document.getElementById("clickCount").textContent = S.clicks;
 });
 
+/* ================= TELEGRAM-НАГРАДА ================= */
+const TG_REWARD = 50000;
+function updTgBtn(){
+  const b = document.getElementById("tgClaimBtn");
+  if(!b) return;
+  if(S.used.TG_SUB){
+    b.textContent = "✓ Получено";
+    b.disabled = true;
+  } else {
+    b.textContent = "50 000 🪙";
+    b.disabled = false;
+  }
+}
+function claimTgReward(){
+  if(S.used.TG_SUB){ toast("Награда за подписку уже получена"); return; }
+  window.open("https://t.me/SkinUpRu","_blank");
+  S.used.TG_SUB = 1;
+  addBal(TG_REWARD);
+  sfx("coin"); vib(30);
+  toast("Награда за подписку: +"+fmt(TG_REWARD)+" 🪙");
+  updTgBtn(); save();
+}
+
 /* ================= 4. ЕЩЁ: НАСТРОЙКИ ================= */
 function tog(id){
   document.getElementById(id).classList.toggle("on");
@@ -1407,7 +1460,7 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   document.getElementById(b.dataset.p).classList.add("active");
   vib(10); sfx("click");
   if(b.dataset.p==="p-upgrade") renderUpgInv();
-  if(b.dataset.p==="p-profile"){ renderLB(); renderTradeSel(); }
+  if(b.dataset.p==="p-profile"){ renderLB(); renderTradeSel(); updTgBtn(); }
   if(b.dataset.p==="p-market") renderMarket();
   if(b.dataset.p==="p-inv") renderInv();
 }));
@@ -1422,7 +1475,7 @@ const PROMOS = {
 function applyPromo(){
   const raw = (document.getElementById("promoInput").value||"").trim();
   const msg = document.getElementById("promoMsg");
-  if(!raw){ msg.textContent = "Введи промокод."; return; }
+  if(!raw){ msg.textContent = "Введи промокode.".replace("code","код"); return; }
   const key = Object.keys(PROMOS).find(k=>k.toLowerCase()===raw.toLowerCase());
   if(!key){
     msg.textContent = "Такого промокода нет 🤷";
