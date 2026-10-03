@@ -627,7 +627,6 @@ function renderTradeSel(){
 function pickTradeSkin(k){
   if(tradeSel.has(k)) tradeSel.delete(k); else tradeSel.add(k);
   vib(8); sfx("click"); renderTradeSel();
-}
 async function sendTrade(){
   if(!USER) return;
   const nick = (document.getElementById("tradeNick").value||"").trim();
@@ -643,12 +642,21 @@ async function sendTrade(){
     await fbDB.ref('trades/'+toUid).push({
       from:USER.uid, fromNick:S.nick||"Игрок", items:items, ts:Date.now(), status:"pending"
     });
-    tradeSel.clear(); renderTradeSel();
+    // скины уходят у отправителя сразу — «в пути»
+    const sentSet = new Set(items);
+    S.inv = S.inv.filter(id=>{
+      if(sentSet.has(id)){ sentSet.delete(id); return false; }
+      return true;
+    });
+    tradeSel.clear();
     document.getElementById("tradeNick").value = "";
+    save(); renderInv();
     toast("Трейд отправлен: "+nick);
     sfx("coin");
   }catch(e){ console.warn(e); toast("Ошибка отправки трейда"); }
 }
+function listenTrades(){
+
 function listenTrades(){
   if(tradesRef) tradesRef.off();
   tradesRef = fbDB.ref('trades/'+USER.uid);
@@ -678,23 +686,12 @@ async function acceptTrade(tradeId){
   const snap = await fbDB.ref('trades/'+USER.uid+'/'+tradeId).get();
   const t = snap.val();
   if(!t || !Array.isArray(t.items) || !t.items.length) return;
-  let committed = false;
-  await fbDB.ref('users/'+t.from+'/inv').transaction(inv=>{
-    const out = (inv||[]).slice();
-    for(const id of t.items){ if(out.indexOf(id)<0) return; } // у отправителя чего-то нет — отмена
-    for(const id of t.items){ out.splice(out.indexOf(id),1); }
-    return out;
-  }, (err,comm)=>{ committed = !!comm; });
-  if(!committed){
-    await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
-    toast("У отправителя уже нет этих скинов — трейд отменён");
-    return;
-  }
   t.items.forEach(i=>S.inv.push(i));
   save(); renderInv(); sfx("win");
   await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
   toast("Трейд принят!");
 }
+
 async function declineTrade(tradeId){
   await fbDB.ref('trades/'+USER.uid+'/'+tradeId).remove();
   toast("Трейд отклонён");
