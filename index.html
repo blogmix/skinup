@@ -19,7 +19,8 @@
 
   /* ===== ЖЁЛТЫЕ КРАПИНКИ (падающий «снег») ===== */
   #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
-  #snow i { position:absolute; top:-12px; border-radius:50%; background:#ffd83d;
+  #snow i { position:absolute; top:-14px; border-radius:50%; background:#ffd83d;
+            box-shadow:0 0 6px rgba(255,216,61,.55);
             animation:fall linear infinite; }
   @keyframes fall { to { transform:translateY(112vh); } }
 
@@ -307,7 +308,7 @@
       <button class="bolt" id="btnBolt" onclick="boost()">⚡</button>
     </div>
     <div class="wheel-result" id="wheelRes">&nbsp;</div>
-    <p class="muted" style="margin-top:6px;">Нажми на карточку ставки, чтобы выбрать скины. При выигрыше каждый скин заменится на более дорогой, при проигрыше — сгорит. ⚡ — переключатель турбо для кейсов.</p>
+    <p class="muted" style="margin-top:6px;">Нажми на карточку ставки, чтобы выбрать скины. При выигрыше каждый скин заменится на более дорогой, при проигрыше — сгорит. ⚡ — переключатель быстрого открытия кейсов.</p>
     <div id="upgPicker" style="display:none;">
       <h3>Выбери скины</h3>
       <div class="inv-grid" id="upgInv"></div>
@@ -457,20 +458,15 @@
 
   <!-- ===== ЕЩЁ ===== -->
   <section id="p-more">
-    <h2>⚙️ Настройки аккаунта</h2>
+    <h2>⚙️ Настройки</h2>
     <div class="card">
       <div class="set-row"><span>🙂 Ник</span><span id="nickName" style="cursor:pointer" onclick="changeNick()">🙂 Гость</span></div>
       <div class="set-row"><span>🖼 Аватар</span><button onclick="toggleAvatarPicker()">Выбрать</button></div>
       <div id="avPicker" style="display:none;flex-wrap:wrap;gap:8px;padding:12px 0 4px;"></div>
       <div class="set-row"><span>👤 Аккаунт</span><span id="accEmail" style="color:#888;font-size:12px;"></span></div>
-      <div class="set-row"><span>🚪 Выход</span><button onclick="logout()">Выйти</button></div>
-    </div>
-    <h2>⚙️ Настройки игры</h2>
-    <div class="card">
       <div class="set-row"><span>🔊 Звуки</span><div class="switch on" id="swSound" onclick="tog('swSound')"><i></i></div></div>
       <div class="set-row"><span>📳 Вибрация</span><div class="switch" id="swVibro" onclick="tog('swVibro')"><i></i></div></div>
-      <div class="set-row"><span>⚡ Быстрое открытие кейсов</span><div class="switch on" id="swFast" onclick="tog('swFast')"><i></i></div></div>
-      <button class="danger" onclick="resetAll()">Сбросить прогресс</button>
+      <div class="set-row" style="border-bottom:none;"><span>🚪 Выход</span><button onclick="logout()">Выйти</button></div>
     </div>
   </section>
 </main>
@@ -542,24 +538,19 @@ function fmt(n){ return n.toLocaleString("ru-RU"); }
 /* ================= ЖЁЛТЫЙ «СНЕГ» НА ФОНЕ ================= */
 (function(){
   const box = document.getElementById("snow");
-  const COUNT = 36; // количество крапинок
+  const COUNT = 44; // количество крапинок
   for(let k=0;k<COUNT;k++){
     const d = document.createElement("i");
-    const size = 2 + Math.random()*3.5;          // 2–5.5 px
+    const size = 2.5 + Math.random()*4.5;        // 2.5–7 px — чуть крупнее
     d.style.width = size+"px";
     d.style.height = size+"px";
     d.style.left = Math.random()*100+"%";
-    d.style.opacity = (0.05 + Math.random()*0.14).toFixed(2); // очень бледные
-    d.style.filter = "blur("+(Math.random()<0.4?1:0)+"px)";
-    d.style.animationDuration = (9 + Math.random()*14)+"s";   // 9–23 сек падения
-    d.style.animationDelay = (-Math.random()*20)+"s";         // старт сразу «в процессе»
-    d.style.transform = "translateX(0)";
-    // лёгкий дрейф в сторону, чтобы падение не было строго вертикальным
-    d.style.setProperty("--drift", ((Math.random()-0.5)*60)+"px");
-    d.style.animationName = "fall";
+    d.style.opacity = (0.15 + Math.random()*0.3).toFixed(2); // заметнее: 15–45%
+    d.style.filter = "blur("+(Math.random()<0.35?1:0)+"px)";
+    d.style.animationDuration = (9 + Math.random()*14)+"s";  // 9–23 сек падения
+    d.style.animationDelay = (-Math.random()*20)+"s";        // старт сразу «в процессе»
     box.appendChild(d);
   }
-  // дрейф по горизонтали через вторую анимацию не нужен — оставляем вертикаль, это дешевле и спокойнее
 })();
 
 /* ================= АВТОРИЗАЦИЯ ================= */
@@ -1050,12 +1041,14 @@ function animateSpin(target, done){
   }
   requestAnimationFrame(step);
 }
+
+/* ================= ⚡ ТУРБО КЕЙСОВ ================= */
 function boost(){
   turbo = !turbo;
   document.getElementById("btnBolt").classList.toggle("on", turbo);
-  document.getElementById("swFast").classList.toggle("on", turbo);
   saveSettings();
-  toast(turbo ? "⚡ Турбо включён — кейсы крутятся быстро" : "⚡ Турбо выключен");
+  toast(turbo ? "⚡ Турбо включён — кейсы крутятся за ~2 секунды" : "⚡ Турбо выключен — обычная скорость");
+  vib(10); sfx("click");
 }
 
 /* ================= 2. КЕЙСЫ ================= */
@@ -1123,16 +1116,17 @@ function showTapes(winners){
     return `<div class="tape"><div class="strip">${items.map(s=>tapeItem(s, false)).join("")}</div><div class="marker"></div></div>`;
   }).join("");
   ov.classList.add("show");
-  const fast = turbo || document.getElementById("swFast").classList.contains("on");
+  // скорость определяет только жёлтая кнопка ⚡ на экране апгрейда
+  const fast = turbo;
   const strips = [...box.querySelectorAll(".strip")];
   const results = [];
   let stopped = 0, finishedFlag = false;
   const finishOnce = (res)=>{ if(finishedFlag) return; finishedFlag = true; caseTimers.forEach(clearTimeout); caseTimers=[]; whooshStop(); finishTapes(res); };
+  sfx("open");
+  const maxDur0 = (fast ? 1.5 : 3.2) + (strips.length-1)*0.5;
+  whooshStart(maxDur0);
   const stripW0 = strips[0].parentElement.clientWidth || 320;
   const target0 = WIN_IDX*STEP + STEP/2 - stripW0/2;
-  const maxDur0 = (fast ? 1.5 : 3.2) + (strips.length-1)*0.5;
-  sfx("open");
-  whooshStart(maxDur0);
   caseTimers = tapeTickTimes(maxDur0, target0, STEP).map((tt,k)=>
     setTimeout(()=>{ if(opening && !finishedFlag){ sfx("tick"); if(k%2===0) vib(5); } }, tt*1000));
   strips.forEach((el,i)=>{
@@ -1498,22 +1492,26 @@ function checkTgWord(){
   updTgBtn(); save();
 }
 
-/* ================= 4. ЕЩЁ: НАСТРОЙКИ ================= */
+/* ================= ЕЩЁ: НАСТРОЙКИ ================= */
 function tog(id){
   document.getElementById(id).classList.toggle("on");
   saveSettings(); vib(10);
 }
 function saveSettings(){
-  const st = {}; ["swSound","swVibro","swFast"].forEach(i=>
+  const st = {};
+  ["swSound","swVibro"].forEach(i=>
     st[i]=document.getElementById(i).classList.contains("on"));
+  st.fast = turbo; // состояние ⚡ запоминаем тоже
   localStorage.setItem("skinup_settings", JSON.stringify(st));
 }
 function loadSettings(){
   let st={};
   try{ st = JSON.parse(localStorage.getItem("skinup_settings")||"{}")||{}; }catch(e){}
-  ["swSound","swVibro","swFast"].forEach(i=>{
+  ["swSound","swVibro"].forEach(i=>{
     if(i in st) document.getElementById(i).classList.toggle("on", !!st[i]);
   });
+  turbo = !!st.fast;
+  document.getElementById("btnBolt").classList.toggle("on", turbo);
 }
 function updNick(){
   document.getElementById("nickName").textContent = (S.av||"🙂")+" "+(S.nick||"Гость");
