@@ -11,17 +11,24 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Segoe UI',Arial,sans-serif;
-         /* лёгкий тёплый отсвет жёлтого снизу — почти незаметный */
-         background:radial-gradient(circle at 50% 115%, rgba(255,216,61,.12) 0%, rgba(255,216,61,.04) 40%, #0d0d14 75%);
+         /* чёрный фон с едва заметным тёплым отсветом снизу */
+         background:radial-gradient(circle at 50% 120%, rgba(255,216,61,.05) 0%, rgba(255,216,61,.015) 45%, transparent 70%), #0d0d14;
          background-attachment:fixed;
          color:#eee;
          padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
+
+  /* ===== ЖЁЛТЫЕ КРАПИНКИ (падающий «снег») ===== */
+  #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+  #snow i { position:absolute; top:-12px; border-radius:50%; background:#ffd83d;
+            animation:fall linear infinite; }
+  @keyframes fall { to { transform:translateY(112vh); } }
+
   header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
            display:flex; justify-content:space-between; align-items:center;
            border-bottom:2px solid #ffd83d; }
   header .logo { font-weight:900; font-size:20px; color:#ffd83d; letter-spacing:1px; }
   header .balance { font-weight:700; color:#ffd83d; background:#222; padding:6px 12px; border-radius:20px; }
-  main { padding:14px; }
+  main { padding:14px; position:relative; z-index:2; }
   section { display:none; }
   section.active { display:block; }
   h2 { margin:14px 0 10px; font-size:18px; }
@@ -59,9 +66,6 @@
   .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
   .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
   .auth-card button.primary { width:100%; }
-  body.light .auth-ov { background:#eef0f5; }
-  body.light .auth-card { background:#fff; border-color:#d9dce3; }
-  body.light .auth-card input { background:#f4f5f9; color:#1c1c28; border-color:#d9dce3; }
 
   /* ===== 1. КОЛЕСО ===== */
   .wheel-wrap { position:relative; width:280px; height:280px; margin:14px auto 8px; }
@@ -225,35 +229,10 @@
            font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
   .toast.show { opacity:1; }
   .prc { color:#ffd83d; }
-
-  body.light { background:#eef0f5; color:#1c1c28; }
-  body.light header { background:#fff; border-bottom-color:#e0a800; }
-  body.light header .logo, body.light header .balance { color:#b8860b; }
-  body.light header .balance { background:#f2f2f7; }
-  body.light .card, body.light .skin, body.light .case-card,
-  body.light .mkt-bar select, body.light .mkt-bar input,
-  body.light nav, body.light .switch { background:#fff; border-color:#d9dce3; }
-  body.light nav { border-top-color:#d9dce3; }
-  body.light .card, body.light .skin, body.light .case-card { color:#1c1c28; }
-  body.light .muted { color:#666; }
-  body.light .lb td, body.light .quest, body.light .set-row, body.light .social-row { border-bottom-color:#e4e6ec; }
-  body.light .lb tr.me td { background:#fff6d6; color:#8a6d00; }
-  body.light .tag { background:#eceef3; color:#555; }
-  body.light .prc, body.light .case-card .pr, body.light .tapes-res { color:#b8860b; }
-  body.light .case-card .mx { color:#777; }
-  body.light .titem, body.light .tape, body.light .trade-in { background:#f7f8fb; border-color:#d9dce3; }
-  body.light .titem .pr { color:#777; }
-  body.light .tape::before { background:linear-gradient(90deg,#f7f8fb,transparent); }
-  body.light .tape::after { background:linear-gradient(270deg,#f7f8fb,transparent); }
-  body.light .wheel-cover { background:#fff; border-color:#d9dce3; }
-  body.light .wc-sub { color:#666; }
-  body.light .bet-card { background:#fff; }
-  body.light .bet-empty { color:#999; }
-  body.light .bet-card.stake .bet-pr, body.light .bet-card.target .bet-pr { color:#b8860b; }
-  body.light .spin-controls .bolt { background:#e8e8ee; color:#333; }
 </style>
 </head>
 <body>
+<div id="snow"></div>
 <header>
   <div class="logo">SKINUP</div>
   <div class="balance">🪙 <span id="bal">0</span></div>
@@ -491,7 +470,6 @@
       <div class="set-row"><span>🔊 Звуки</span><div class="switch on" id="swSound" onclick="tog('swSound')"><i></i></div></div>
       <div class="set-row"><span>📳 Вибрация</span><div class="switch" id="swVibro" onclick="tog('swVibro')"><i></i></div></div>
       <div class="set-row"><span>⚡ Быстрое открытие кейсов</span><div class="switch on" id="swFast" onclick="tog('swFast')"><i></i></div></div>
-      <div class="set-row"><span>🌙 Тёмная тема</span><div class="switch on" id="swTheme" onclick="tog('swTheme')"><i></i></div></div>
       <button class="danger" onclick="resetAll()">Сбросить прогресс</button>
     </div>
   </section>
@@ -560,6 +538,29 @@ function toast(t){ const el=document.getElementById("toast"); el.textContent=t;
   el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1600); }
 function addBal(n){ S.bal=Math.max(0,S.bal+n); document.getElementById("bal").textContent=S.bal; save(); }
 function fmt(n){ return n.toLocaleString("ru-RU"); }
+
+/* ================= ЖЁЛТЫЙ «СНЕГ» НА ФОНЕ ================= */
+(function(){
+  const box = document.getElementById("snow");
+  const COUNT = 36; // количество крапинок
+  for(let k=0;k<COUNT;k++){
+    const d = document.createElement("i");
+    const size = 2 + Math.random()*3.5;          // 2–5.5 px
+    d.style.width = size+"px";
+    d.style.height = size+"px";
+    d.style.left = Math.random()*100+"%";
+    d.style.opacity = (0.05 + Math.random()*0.14).toFixed(2); // очень бледные
+    d.style.filter = "blur("+(Math.random()<0.4?1:0)+"px)";
+    d.style.animationDuration = (9 + Math.random()*14)+"s";   // 9–23 сек падения
+    d.style.animationDelay = (-Math.random()*20)+"s";         // старт сразу «в процессе»
+    d.style.transform = "translateX(0)";
+    // лёгкий дрейф в сторону, чтобы падение не было строго вертикальным
+    d.style.setProperty("--drift", ((Math.random()-0.5)*60)+"px");
+    d.style.animationName = "fall";
+    box.appendChild(d);
+  }
+  // дрейф по горизонтали через вторую анимацию не нужен — оставляем вертикаль, это дешевле и спокойнее
+})();
 
 /* ================= АВТОРИЗАЦИЯ ================= */
 try{ fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION); }catch(e){}
@@ -1460,7 +1461,7 @@ document.getElementById("clickCircle").addEventListener("pointerdown", e=>{
 
 /* ================= TELEGRAM-НАГРАДА ================= */
 const TG_REWARD = 50000;
-const TG_WORD = "SKINUP"; // слово из закреплённого поста в канале. Поменял здесь — поменяй и в канале.
+const TG_WORD = "SKINUP"; // слово из закреплённого поста в канале. Поменяешь здесь — поменяй и в канале.
 function updTgBtn(){
   const b = document.getElementById("tgClaimBtn");
   if(!b) return;
@@ -1500,21 +1501,17 @@ function checkTgWord(){
 /* ================= 4. ЕЩЁ: НАСТРОЙКИ ================= */
 function tog(id){
   document.getElementById(id).classList.toggle("on");
-  if(id==="swTheme") applyTheme();
   saveSettings(); vib(10);
 }
-function applyTheme(){
-  document.body.classList.toggle("light", document.getElementById("swTheme").classList.contains("on"));
-}
 function saveSettings(){
-  const st = {}; ["swSound","swVibro","swFast","swTheme"].forEach(i=>
+  const st = {}; ["swSound","swVibro","swFast"].forEach(i=>
     st[i]=document.getElementById(i).classList.contains("on"));
   localStorage.setItem("skinup_settings", JSON.stringify(st));
 }
 function loadSettings(){
   let st={};
   try{ st = JSON.parse(localStorage.getItem("skinup_settings")||"{}")||{}; }catch(e){}
-  ["swSound","swVibro","swFast","swTheme"].forEach(i=>{
+  ["swSound","swVibro","swFast"].forEach(i=>{
     if(i in st) document.getElementById(i).classList.toggle("on", !!st[i]);
   });
 }
@@ -1603,7 +1600,7 @@ function applyPromo(){
 }
 
 /* старт */
-loadSettings(); applyTheme(); updNick();
+loadSettings(); updNick();
 document.getElementById("bal").textContent = S.bal;
 document.getElementById("clickCount").textContent = S.clicks;
 renderCases(); renderCasePreview(); renderMarket(); renderInv(); renderLB();
