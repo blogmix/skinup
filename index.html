@@ -5,19 +5,239 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="style.css">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif;
+         /* чёрный фон с едва заметным тёплым отсветом снизу */
+         background:radial-gradient(circle at 50% 120%, rgba(255,216,61,.05) 0%, rgba(255,216,61,.015) 45%, transparent 70%), #0d0d14;
+         background-attachment:fixed;
+         color:#eee;
+         padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
+
+  /* ===== ЖЁЛТЫЕ КРАПИНКИ (падающий «снег») ===== */
+  #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+  #snow i { position:absolute; top:-14px; border-radius:50%; background:#ffd83d;
+            box-shadow:0 0 6px rgba(255,216,61,.55);
+            animation:fall linear infinite; }
+  @keyframes fall { to { transform:translateY(112vh); } }
+
+  header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
+           display:flex; justify-content:space-between; align-items:center;
+           border-bottom:2px solid #ffd83d; }
+  header .logo { font-weight:900; font-size:20px; color:#ffd83d; letter-spacing:1px; }
+  header .balance { font-weight:700; color:#ffd83d; background:#222; padding:6px 12px; border-radius:20px; }
+  main { padding:14px; position:relative; z-index:2; }
+  section { display:none; }
+  section.active { display:block; }
+  h2 { margin:14px 0 10px; font-size:18px; }
+  h3 { font-size:15px; margin-bottom:8px; }
+  .muted { color:#888; font-size:13px; margin-bottom:12px; }
+  .card { background:#181824; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:14px; }
+  button { font-family:inherit; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
+           cursor:pointer; background:#2a2a3a; color:#fff; }
+  button:active { transform:scale(.97); }
+  button.primary { background:#ffd83d; color:#111; }
+  button:disabled { opacity:.4; cursor:default; }
+  input[type="text"], input[type="email"], input[type="password"] {
+    background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
+    padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
+  .chances { display:flex; gap:8px; margin:10px 0; }
+  .chances button { flex:1; border-radius:12px; border:2px solid #2a2a3a; background:#181824; color:#ccc; }
+  .chances button.on { outline:none; }
+  .chances button.on[data-ch="35"] { border-color:#ff6b6b; color:#ff6b6b; background:#2a1418; }
+  .chances button.on[data-ch="50"] { border-color:#ffd83d; color:#ffd83d; background:#2a2410; }
+  .chances button.on[data-ch="75"] { border-color:#8f8; color:#8f8; background:#102416; }
+
+  /* ===== ЭКРАН ВХОДА ===== */
+  .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
+             align-items:center; justify-content:center; padding:16px; }
+  .auth-ov.show { display:flex; }
+  .auth-card { width:100%; max-width:340px; background:#181824; border:1px solid #2a2a3a;
+               border-radius:16px; padding:22px; }
+  .auth-logo { font-weight:900; font-size:26px; color:#ffd83d; text-align:center;
+               letter-spacing:2px; margin-bottom:6px; }
+  .auth-sub { text-align:center; color:#888; font-size:12.5px; margin-bottom:14px; }
+  .auth-tabs { display:flex; gap:8px; margin-bottom:12px; }
+  .auth-tabs button { flex:1; }
+  .auth-tabs button.on { background:#ffd83d; color:#111; }
+  .auth-card input { width:100%; margin-bottom:10px; }
+  .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
+  .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
+  .auth-card button.primary { width:100%; }
+
+  /* ===== 1. КОЛЕСО ===== */
+  .wheel-wrap { position:relative; width:280px; height:280px; margin:14px auto 8px; }
+  .wheel { position:absolute; inset:0; border-radius:50%; background:#111;
+           box-shadow:0 0 30px rgba(255,216,61,.2), inset 0 0 22px rgba(0,0,0,.6); }
+  .wheel-cover { position:absolute; inset:30px; border-radius:50%;
+           background:radial-gradient(circle at 50% 35%, #1c1c2a, #0e0e16);
+           border:1px solid #2a2a3a; z-index:4;
+           display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .wc-pct { font-weight:900; font-size:42px; line-height:1; color:#ffd83d; }
+  .wc-sub { font-size:12.5px; color:#999; margin-top:6px; }
+  .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
+  .needle { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
+            width:0; height:0; z-index:5;
+            border-left:10px solid transparent; border-right:10px solid transparent;
+            border-bottom:36px solid #ffd83d;
+            filter:drop-shadow(0 0 8px rgba(255,216,61,.8)); pointer-events:none; }
+  .ring-lbl { position:absolute; z-index:6; font-size:11.5px; font-weight:700; color:#bbb; }
+  .lbl-top { top:-4px; left:50%; transform:translateX(-50%); }
+  .lbl-l { left:-8px; top:50%; transform:translateY(-50%); }
+  .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
+  .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ffd83d; }
+  .wheel-result { text-align:center; font-weight:800; font-size:16px; min-height:24px; margin-top:8px; }
+
+  /* ===== СТАВКА И ЦЕЛЬ ===== */
+  .bet-row { display:flex; align-items:stretch; gap:8px; margin:12px 0 10px; }
+  .bet-card { flex:1; border-radius:14px; padding:12px 8px; text-align:center;
+              background:#181824; min-height:150px; }
+  .bet-card.stake { border:2px solid #ffd83d; box-shadow:0 0 14px rgba(255,216,61,.15); cursor:pointer; }
+  .bet-card.target { border:2px solid #7ec8ff; }
+  .bet-title { font-size:11.5px; font-weight:800; letter-spacing:1px; margin-bottom:8px; }
+  .bet-card.stake .bet-title { color:#ffd83d; }
+  .bet-card.target .bet-title { color:#7ec8ff; }
+  .bet-arrow { align-self:center; font-size:24px; color:#ffd83d; font-weight:900; }
+  .bet-em { font-size:42px; line-height:1.15; }
+  .bet-nm { font-size:12px; margin:6px 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bet-pr { font-weight:800; color:#ffd83d; font-size:15px; }
+  .bet-empty { color:#888; font-size:12.5px; padding:34px 4px; }
+  .bet-empty span { display:block; font-size:11px; color:#666; margin-top:6px; }
+  .roll-btn { width:100%; padding:15px; font-size:17px; border-radius:14px; letter-spacing:1px; }
+  .spin-controls { display:flex; gap:8px; }
+  .spin-controls .roll-btn { flex:1; }
+  .spin-controls .bolt { max-width:56px; font-size:20px; background:#2a2a3a; }
+  .spin-controls .bolt.on { background:#ffd83d; color:#111; }
+  #upgPicker { margin-top:10px; }
+
+  /* ===== 2. КЕЙСЫ ===== */
+  .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .case-card { background:#181824; border:1px solid #2a2a3a; border-radius:12px;
+               padding:8px 4px; text-align:center; cursor:pointer; transition:.15s; }
+  .case-card.sel { border-color:#ffd83d; background:#2a2410; transform:translateY(-3px); }
+  .case-card .em { font-size:26px; }
+  .case-card .nm { font-size:10.5px; font-weight:700; margin-top:3px; }
+  .case-card .pr { font-size:10px; color:#ffd83d; }
+  .case-card .mx { font-size:9px; color:#888; }
+  @media (max-width:420px){ .case-card .nm{font-size:9px;} .case-card .em{font-size:22px;} }
+  .case-qty { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0; }
+  .case-qty button { width:40px; height:40px; border-radius:50%; font-size:20px; }
+
+  .tapes-ov { position:fixed; inset:0; background:rgba(5,5,10,.96); z-index:60;
+              display:none; flex-direction:column; padding:14px; overflow-y:auto; }
+  .tapes-ov.show { display:flex; }
+  .tapes-ov h3 { text-align:center; color:#ffd83d; margin:6px 0 10px; }
+  .tape { position:relative; height:92px; overflow:hidden; background:#0f0f18;
+          border:1px solid #2a2a3a; border-radius:12px; margin-bottom:10px; }
+  .tape .strip { position:absolute; top:0; left:0; height:100%; display:flex; align-items:center; will-change:transform; }
+  .titem { flex:0 0 104px; margin-right:6px; height:80px; background:#181824; border:1px solid #2a2a3a;
+           border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+           font-size:10px; text-align:center; }
+  .titem .em { font-size:26px; line-height:1.1; }
+  .titem .nm { font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:96px; }
+  .titem .pr { font-size:9.5px; color:#ffd83d; font-weight:700; }
+  .tape .marker { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px;
+                  background:#ffd83d; box-shadow:0 0 10px #ffd83d; z-index:3; }
+  .tape::before, .tape::after { content:""; position:absolute; top:0; bottom:0; width:70px; z-index:2; pointer-events:none; }
+  .tape::before { left:0; background:linear-gradient(90deg,#0f0f18,transparent); }
+  .tape::after { right:0; background:linear-gradient(270deg,#0f0f18,transparent); }
+  .tape.done { border-color:#ffd83d; }
+  .tapes-res { text-align:center; font-weight:800; min-height:22px; margin:4px 0 10px; color:#ffd83d; }
+
+  /* ===== МАРКЕТ ===== */
+  .mkt-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .mkt-bar select, .mkt-bar input { background:#181824; color:#eee; border:1px solid #2a2a3a;
+           border-radius:10px; padding:9px 10px; font-family:inherit; font-size:13px; }
+  .mkt-bar input { flex:1; min-width:140px; }
+  .mkt-nav { display:flex; align-items:center; justify-content:center; gap:12px; margin:12px 0; font-size:13px; }
+  .mkt-nav button { padding:8px 14px; }
+  .shop-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .skin { background:#181824; border:1px solid #2a2a3a; border-radius:10px; padding:10px 6px;
+          text-align:center; font-size:12px; }
+  .skin .em { font-size:28px; }
+  .skin .r { font-size:10px; }
+  .skin button { margin-top:6px; padding:5px 8px; font-size:11px; }
+  .skin.sel { border-color:#ffd83d; background:#2a2410; outline:2px solid #ffd83d; }
+
+  /* ===== ИНВЕНТАРЬ ===== */
+  .inv-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .inv-sum { font-size:14px; margin-bottom:10px; }
+  .inv-sum b { color:#ffd83d; }
+
+  /* ===== 3. ПРОФИЛЬ ===== */
+  .lb { width:100%; border-collapse:collapse; font-size:13px; }
+  .lb td { padding:7px 6px; border-bottom:1px solid #222; }
+  .lb tr.me td { background:#2a2410; color:#ffd83d; font-weight:700; }
+  .lb .num { width:28px; color:#888; }
+  .lb .coins { text-align:right; color:#ffd83d; font-weight:600; }
+  .quest { display:flex; justify-content:space-between; align-items:center; gap:8px;
+           padding:9px 0; border-bottom:1px solid #222; }
+  .quest .info { flex:1; }
+  .quest .nm { font-size:13.5px; font-weight:600; }
+  .quest .bar { height:6px; background:#222; border-radius:4px; margin-top:5px; overflow:hidden; }
+  .quest .bar i { display:block; height:100%; background:#ffd83d; }
+  .quest .rw { font-size:11px; color:#8f8; margin-top:3px; }
+  .quest button { padding:6px 10px; font-size:12px; }
+  .tag { font-size:10px; background:#2a2a3a; border-radius:8px; padding:2px 7px; margin-left:6px; }
+  .tag.d { background:#1a2a3a; color:#7ec8ff; } .tag.w { background:#3a1a2a; color:#ff9ecb; }
+
+  .trade-in { background:#0f0f18; border:1px solid #2a2a3a; border-radius:12px;
+              padding:10px; margin-bottom:8px; font-size:13px; }
+  .trade-in .tn { font-weight:700; color:#ffd83d; }
+  .trade-in .ti { color:#bbb; font-size:12px; margin:5px 0; }
+  .trade-in .tbtns { display:flex; gap:8px; margin-top:6px; }
+  .trade-in button { flex:1; padding:7px 4px; font-size:12px; }
+
+  .social-row { display:flex; align-items:center; gap:10px; padding:10px 0;
+                border-bottom:1px solid #222; }
+  .social-row:last-child { border-bottom:none; }
+  .social-row .ic { font-size:24px; }
+  .social-row .info { flex:1; }
+  .social-row .nm { font-weight:700; font-size:14px; }
+  .social-row .ds { font-size:12px; color:#888; }
+
+  .clicker-wrap { text-align:center; }
+  .click-circle { width:110px; height:110px; border-radius:50%; margin:14px auto;
+                  background:radial-gradient(circle at 35% 30%, #ffe98a, #ffd83d 60%, #d9a800);
+                  box-shadow:0 0 25px rgba(255,216,61,.5), inset 0 -6px 14px rgba(0,0,0,.25);
+                  border:4px solid #a87d00; font-size:44px; line-height:102px;
+                  cursor:pointer; user-select:none; touch-action:manipulation; }
+  .click-circle:active { transform:scale(.93); }
+  .click-info { font-size:12.5px; color:#bbb; }
+  .click-info b { color:#ffd83d; }
+  .click-warn { color:#ff6b6b; font-weight:700; font-size:13px; min-height:18px; margin-top:4px; }
+
+  .set-row { display:flex; justify-content:space-between; align-items:center;
+             padding:11px 0; border-bottom:1px solid #222; font-size:14px; }
+  .switch { width:46px; height:26px; border-radius:14px; background:#333; position:relative; cursor:pointer; }
+  .switch.on { background:#ffd83d; }
+  .switch i { position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%;
+              background:#fff; transition:.2s; }
+  .switch.on i { left:23px; }
+  .danger { background:#a02020; width:100%; margin-top:8px; }
+
+  nav { position:fixed; bottom:0; left:0; right:0; background:#14141f;
+        border-top:2px solid #2a2a3a; display:flex; z-index:20; }
+  nav button { flex:1; background:none; border:none; border-radius:0; padding:9px 2px 11px;
+               font-size:10px; color:#888; font-weight:700; }
+  nav button .ic { display:block; font-size:18px; }
+  nav button.on { color:#ffd83d; border-top:3px solid #ffd83d; }
+  .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
+           background:#ffd83d; color:#111; padding:10px 18px; border-radius:22px;
+           font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .prc { color:#ffd83d; }
+</style>
 </head>
 <body>
 <div id="snow"></div>
-
 <header>
   <div class="logo">SKINUP</div>
   <div class="balance">🪙 <span id="bal">0</span></div>
 </header>
-
 <main>
   <div class="toast" id="toast"></div>
 
@@ -50,7 +270,7 @@
     </div>
   </div>
 
-  <!-- ===== 1. КОЛЕСО (АПГРЕЙД) ===== -->
+  <!-- ===== АПГРЕЙД ===== -->
   <section id="p-upgrade" class="active">
     <h2>🎡 Колесо апгрейда</h2>
     <div class="chances" id="chances">
@@ -96,7 +316,7 @@
     </div>
   </section>
 
-  <!-- ===== 2. КЕЙСЫ ===== -->
+  <!-- ===== КЕЙСЫ ===== -->
   <section id="p-cases">
     <h2>📦 Кейсы</h2>
     <p class="muted">Выбери кейс, укажи количество — до 10 за раз. Откроешь — увидишь ленты прокрутки друг под другом.</p>
@@ -163,7 +383,7 @@
     <div class="wheel-result" id="contractRes">&nbsp;</div>
   </section>
 
-  <!-- ===== 3. ПРОФИЛЬ ===== -->
+  <!-- ===== ПРОФИЛЬ ===== -->
   <section id="p-profile">
     <h2>👤 Профиль</h2>
     <div class="card">
@@ -236,32 +456,6 @@
     </div>
   </section>
 
-  <!-- ===== ЛОТЕРЕЯ ===== -->
-  <section id="p-lottery">
-    <h2>🎰 Лотерея</h2>
-    <div class="card">
-      <h3>🎟 Билет на ближайший розыгрыш</h3>
-      <div id="lotInfo" class="muted">Розыгрыш через: <b id="lotLeft">—</b> <span id="lotMine"></span></div>
-      <div class="inv-sum">Билетов продано: <b id="lotCount">0</b> · Твой шанс: <b id="lotChance">—</b></div>
-      <button class="primary" style="width:100%" id="lotBuyBtn" onclick="buyLotTicket()">КУПИТЬ БИЛЕТ — 100 000 🪙</button>
-      <p class="muted" style="margin-top:8px;">Один билет на человека в каждый розыгрыш. Приз — 1 000 000 🪙.</p>
-    </div>
-    <div class="card">
-      <h3>🎡 Розыгрыш</h3>
-      <div class="wheel-wrap">
-        <div class="wheel" id="lotWheel"></div>
-        <div class="lot-needle"></div>
-      </div>
-      <div class="wheel-result" id="lotResult">&nbsp;</div>
-      <button class="primary" id="lotClaimBtn" style="display:none;width:100%;margin-top:8px;" onclick="claimLotPrize()">ЗАБРАТЬ ПРИЗ — 1 000 000 🪙</button>
-      <p class="muted">Розыгрыш каждое воскресенье в 12:00. Шансы равные: 100% делится на всех купивших.</p>
-    </div>
-    <div class="card">
-      <h3>👥 Участники</h3>
-      <div id="lotPlayers" class="muted">Пока никто не купил билет.</div>
-    </div>
-  </section>
-
   <!-- ===== ЕЩЁ ===== -->
   <section id="p-more">
     <h2>⚙️ Настройки</h2>
@@ -291,7 +485,6 @@
   <button data-p="p-market"><span class="ic">🛒</span>Маркет</button>
   <button data-p="p-inv"><span class="ic">🎒</span>Инвентарь</button>
   <button data-p="p-profile"><span class="ic">👤</span>Профиль</button>
-  <button data-p="p-lottery"><span class="ic">🎰</span>Лотерея</button>
   <button data-p="p-more"><span class="ic">⚙️</span>Ещё</button>
 </nav>
 
@@ -464,7 +657,6 @@ async function loadUserData(){
     document.getElementById("clickCount").textContent = S.clicks;
     updNick(); renderInv(); startLB();
     listenTrades(); updTgBtn();
-    listenLottery(); lotteryTick();
     if(!S.nick) document.getElementById("nickOv").classList.add("show");
   }catch(e){
     console.warn("loadUserData:", e);
@@ -1261,193 +1453,6 @@ document.getElementById("clickCircle").addEventListener("pointerdown", e=>{
   document.getElementById("clickCount").textContent = S.clicks;
 });
 
-/* ================= ЛОТЕРЕЯ ================= */
-const LOT_PRICE = 100000;
-const LOT_PRIZE = 1000000;
-let lotState=null, lotLast=null, lotBound=false, lotSeenTs=0, lotSpinning=false;
-
-// ближайшее воскресенье 12:00 по времени устройства
-function nextLotTime(){
-  const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
-  let t = new Date(d.getTime() + (7 - d.getDay()) % 7 * 86400000);
-  if(t <= now) t = new Date(t.getTime() + 7 * 86400000);
-  return t.getTime();
-}
-function fmtLeft(ms){
-  if(ms <= 0) return "идёт розыгрыш…";
-  const s = Math.floor(ms/1000);
-  const d = Math.floor(s/86400), h = Math.floor(s%86400/3600),
-        m = Math.floor(s%3600/60), sec = s%60;
-  return (d ? d+" д " : "") + h+" ч "+m+" мин "+sec+" с";
-}
-function lotGradient(n){
-  if(!n) return "#181824";
-  const seg = 100/n, parts = [];
-  for(let i=0;i<n;i++)
-    parts.push((i%2 ? "#1a1a2a" : "#ffd83d")+" "+(i*seg).toFixed(4)+"% "+((i+1)*seg).toFixed(4)+"%");
-  return "conic-gradient("+parts.join(",")+")";
-}
-// создаёт новый раунд и разыгрывает прошедший
-async function lotteryTick(){
-  if(!USER) return;
-  try{
-    const ref = fbDB.ref('lottery/current');
-    let c = (await ref.get()).val();
-    if(!c){
-      await ref.transaction(cur => cur ? cur : { drawAt: nextLotTime(), tickets: null });
-      c = (await ref.get()).val();
-    }
-    if((c.drawAt||0) <= Date.now()){
-      const uids = c.tickets ? Object.keys(c.tickets) : [];
-      if(uids.length){
-        const winUid = uids[Math.floor(Math.random()*uids.length)];
-        const w = c.tickets[winUid] || {};
-        await fbDB.ref('lottery/last').transaction(cur => {
-          if(cur) return; // другой клиент уже разыграл
-          return { uid:winUid, nick:w.nick||"Игрок", av:w.av||"🙂",
-                   ts:Date.now(), count:uids.length, idx:uids.indexOf(winUid) };
-        });
-      }
-      await ref.transaction(cur => { // новый раунд
-        if(cur && (cur.drawAt||0) > Date.now()) return;
-        return { drawAt: nextLotTime(), tickets: null };
-      });
-    }
-    lotState = (await ref.get()).val();
-    renderLottery();
-  }catch(e){ console.warn("lottery:", e); }
-}
-function listenLottery(){
-  if(lotBound || !USER) return;
-  lotBound = true;
-  fbDB.ref('lottery/last').get().then(snap=>{
-    const v = snap.val();
-    if(v) lotSeenTs = v.ts; // старые розыгрыши заново не прокручиваем
-    fbDB.ref('lottery/last').on('value', s=>{
-      const nv = s.val();
-      if(nv && nv.ts !== lotSeenTs){ lotSeenTs = nv.ts; lotLast = nv; animateLotWin(); }
-      else if(nv) lotLast = nv;
-      renderLottery();
-    });
-  }).catch(()=>{});
-  fbDB.ref('lottery/current').on('value', s=>{
-    lotState = s.val();
-    renderLottery();
-    if(lotState && (lotState.drawAt||0) <= Date.now()) lotteryTick();
-  });
-}
-async function buyLotTicket(){
-  if(!USER){ toast("Войди в аккаунт"); return; }
-  if(lotSpinning) return;
-  await lotteryTick();
-  const c = lotState;
-  if(!c || (c.drawAt||0) <= Date.now()){ toast("Розыгрыш уже начался — жди следующего"); return; }
-  if(c.tickets && c.tickets[USER.uid]){ toast("Ты уже купил билет на этот розыгрыш"); return; }
-  if(S.bal < LOT_PRICE){ toast("Мало монет! Нужно "+fmt(LOT_PRICE)+" 🪙"); return; }
-  try{
-    const res = await fbDB.ref('lottery/current/tickets/'+USER.uid)
-      .transaction(cur => cur ? cur : { nick:S.nick||"Игрок", av:S.av||"🙂", ts:Date.now() });
-    if(!res.committed){ toast("Билет уже куплен"); return; }
-    addBal(-LOT_PRICE);
-    sfx("coin"); vib(20);
-    toast("Билет куплен! Удачи в воскресенье 🍀");
-  }catch(e){ console.warn(e); toast("Ошибка покупки билета"); }
-}
-function claimLotPrize(){
-  if(!lotLast || lotLast.uid !== USER.uid) return;
-  const key = "lot_"+lotLast.ts;
-  if(S.used[key]) return;
-  S.used[key] = 1;
-  addBal(LOT_PRIZE);
-  sfx("win"); vib([40,80,40]);
-  toast("Приз лотереи: +"+fmt(LOT_PRIZE)+" 🪙!");
-  save(); renderLottery();
-}
-function spinLotWheel(winIdx, n, cb){
-  const el = document.getElementById("lotWheel");
-  if(!el){ if(cb) cb(); return; }
-  el.style.background = lotGradient(n);
-  const seg = 360/n;
-  const target = 360*6 - (winIdx*seg + seg/2); // стрелка сверху
-  el.style.transition = "none";
-  el.style.transform = "rotate(0deg)";
-  lotSpinning = true;
-  requestAnimationFrame(()=>{
-    el.style.transition = "transform 6s cubic-bezier(.1,.7,.1,1)";
-    el.style.transform = "rotate("+target+"deg)";
-  });
-  tapeTickTimes(6, Math.abs(target), 24).forEach(tt=>
-    setTimeout(()=>{ if(lotSpinning) sfx("tick"); }, tt*1000));
-  setTimeout(()=>{ lotSpinning = false; if(cb) cb(); }, 6200);
-}
-function animateLotWin(){
-  const res = document.getElementById("lotResult");
-  if(!res || !lotLast) return;
-  spinLotWheel(lotLast.idx||0, lotLast.count||1, ()=>{
-    if(lotLast.uid === USER.uid){
-      res.innerHTML = "🎉 ПОБЕДА! Приз 1 000 000 🪙 — жми «Забрать приз»";
-      res.style.color = "#8f8";
-      sfx("win"); vib([40,80,40]);
-    } else {
-      res.innerHTML = "🏆 Победитель: "+(lotLast.av||"🙂")+" "+(lotLast.nick||"Игрок")+
-        " · участников: "+(lotLast.count||1);
-      res.style.color = "#ffd83d";
-      sfx("win");
-    }
-    renderLottery();
-  });
-}
-function renderLottery(){
-  const info = document.getElementById("lotInfo");
-  if(!info) return;
-  if(!USER){ info.textContent = "Войди в аккаунт, чтобы участвовать."; return; }
-  if(!lotState){ info.textContent = "Загрузка…"; return; }
-  const n = lotState.tickets ? Object.keys(lotState.tickets).length : 0;
-  const mine = !!(lotState.tickets && lotState.tickets[USER.uid]);
-  const left = (lotState.drawAt||0) - Date.now();
-  const elL = document.getElementById("lotLeft");
-  if(elL) elL.textContent = left > 0 ? fmtLeft(left) : "идёт…";
-  const mineEl = document.getElementById("lotMine");
-  if(mineEl) mineEl.innerHTML = mine ? "· <span style='color:#8f8'>билет куплен ✓</span>" : "";
-  document.getElementById("lotCount").textContent = n;
-  document.getElementById("lotChance").textContent =
-    n ? (100/n).toFixed(n>50 ? 4 : 2)+"%" : "100% — первый участник выигрывает гарантированно";
-  const btn = document.getElementById("lotBuyBtn");
-  btn.disabled = mine || left <= 0;
-  btn.textContent = mine ? "БИЛЕТ КУПЛЕН ✓" : "КУПИТЬ БИЛЕТ — "+fmt(LOT_PRICE)+" 🪙";
-  const w = document.getElementById("lotWheel");
-  if(w && !lotSpinning) w.style.background = lotGradient(n);
-  const box = document.getElementById("lotPlayers");
-  if(!n) box.innerHTML = "Пока никто не купил билет.";
-  else {
-    const arr = Object.entries(lotState.tickets).map(([uid,v])=>({uid, nick:v.nick, av:v.av}));
-    box.innerHTML = arr.slice(0,30).map(x=>
-      `<div class="quest"><div class="info"><div class="nm">${x.av||"🙂"} ${x.nick||"Игрок"}${x.uid===USER.uid?" (ты)":""}</div></div>
-       <span class="prc">${(100/n).toFixed(n>50?4:2)}%</span></div>`).join("")
-      + (n>30 ? `<p class="muted">…и ещё ${n-30} участников</p>` : "");
-  }
-  const cb = document.getElementById("lotClaimBtn");
-  if(cb) cb.style.display =
-    (lotLast && lotLast.uid === USER.uid && !S.used["lot_"+lotLast.ts]) ? "block" : "none";
-  const res = document.getElementById("lotResult");
-  if(res && !lotSpinning && lotLast){
-    const got = S.used["lot_"+lotLast.ts];
-    res.innerHTML = lotLast.uid === USER.uid
-      ? (got ? "Твой прошлый приз получен 🎉" : "🎉 Прошлый розыгрыш выиграл ты! Жми «Забрать приз»")
-      : "Прошлый розыгрыш: "+(lotLast.av||"🙂")+" "+(lotLast.nick||"Игрок")+" · участников: "+(lotLast.count||1);
-    res.style.color = lotLast.uid === USER.uid ? "#8f8" : "#ffd83d";
-  }
-}
-// обратный отсчёт раз в секунду
-setInterval(()=>{
-  const el = document.getElementById("lotLeft");
-  if(el && lotState && !lotSpinning)
-    el.textContent = (lotState.drawAt||0) > Date.now() ? fmtLeft(lotState.drawAt - Date.now()) : "идёт…";
-}, 1000);
-// проверять розыгрыш каждые 30 секунд
-setInterval(()=>{ if(USER) lotteryTick(); }, 30000);
-
 /* ================= TELEGRAM-НАГРАДА ================= */
 const TG_REWARD = 50000;
 const TG_WORD = "SKINUP"; // слово из закреплённого поста в канале. Поменяешь здесь — поменяй и в канале.
@@ -1550,7 +1555,6 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   if(b.dataset.p==="p-profile"){ renderLB(); renderTradeSel(); updTgBtn(); }
   if(b.dataset.p==="p-market") renderMarket();
   if(b.dataset.p==="p-inv") renderInv();
-  if(b.dataset.p==="p-lottery"){ renderLottery(); lotteryTick(); }
 }));
 
 /* ================= ПРОМОКОДЫ ================= */
@@ -1598,7 +1602,6 @@ loadSettings(); updNick();
 document.getElementById("bal").textContent = S.bal;
 document.getElementById("clickCount").textContent = S.clicks;
 renderCases(); renderCasePreview(); renderMarket(); renderInv(); renderLB();
-renderLottery();
 window.addEventListener("beforeunload", ()=>{ if(USER){ clearTimeout(cloudSaveTimer); cloudSaveNowDirect(); } });
 function cloudSaveNowDirect(){
   try{
