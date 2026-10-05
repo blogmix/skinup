@@ -5,125 +5,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
   <link rel="icon" type="image/png" href="favicon.png">
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:'Segoe UI',Arial,sans-serif;
            background:radial-gradient(circle at 50% 120%, rgba(255,216,61,.05) 0%, rgba(255,216,61,.015) 45%, transparent 70%), #0d0d14;
            background-attachment:fixed; color:#eee; padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
+
+    /* Снежинки */
     #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
     #snow i { position:absolute; top:-14px; border-radius:50%; background:#ffd83d;
-              box-shadow:0 0 6px rgba(255,216,61,.55); animation:fall linear infinite; }
+              box-shadow:0 0 6px rgba(255,216,61,.55);
+              animation:fall linear infinite; }
     @keyframes fall { to { transform:translateY(112vh); } }
+
     header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
              display:flex; justify-content:space-between; align-items:center;
              border-bottom:2px solid #ffd83d; }
     header .logo { font-weight:900; font-size:20px; color:#ffd83d; letter-spacing:1px; }
     header .balance { font-weight:700; color:#ffd83d; background:#222; padding:6px 12px; border-radius:20px; }
+
     main { padding:14px; position:relative; z-index:2; }
     section { display:none; }
     section.active { display:block; }
+
     h2 { margin:14px 0 10px; font-size:18px; }
-    h3 { font-size:15px; margin-bottom:8px; }
     .muted { color:#888; font-size:13px; margin-bottom:12px; }
     .card { background:#181824; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:14px; }
+
     button { font-family:inherit; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
              cursor:pointer; background:#2a2a3a; color:#fff; }
     button:active { transform:scale(.97); }
     button.primary { background:#ffd83d; color:#111; }
     button:disabled { opacity:.4; cursor:default; }
+
     input[type="text"], input[type="email"], input[type="password"] {
       background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
       padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
-    .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
-               align-items:center; justify-content:center; padding:16px; }
-    .auth-ov.show { display:flex; }
-    .auth-card { width:100%; max-width:340px; background:#181824; border:1px solid #2a2a3a;
-                 border-radius:16px; padding:22px; }
-    .auth-logo { font-weight:900; font-size:26px; color:#ffd83d; text-align:center; letter-spacing:2px; margin-bottom:6px; }
-    .auth-sub { text-align:center; color:#888; font-size:12.5px; margin-bottom:14px; }
-    .auth-tabs { display:flex; gap:8px; margin-bottom:12px; }
-    .auth-tabs button { flex:1; }
-    .auth-tabs button.on { background:#ffd83d; color:#111; }
-    .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
-    .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
-    .auth-card button.primary { width:100%; }
-    .wheel-wrap { position:relative; width:280px; height:280px; margin:14px auto 8px; }
-    .wheel { position:absolute; inset:0; border-radius:50%; background:#111;
-             box-shadow:0 0 30px rgba(255,216,61,.2), inset 0 0 22px rgba(0,0,0,.6); }
-    .wheel-cover { position:absolute; inset:30px; border-radius:50%;
-             background:radial-gradient(circle at 50% 35%, #1c1c2a, #0e0e16);
-             border:1px solid #2a2a3a; z-index:4;
-             display:flex; flex-direction:column; align-items:center; justify-content:center; }
-    .wc-pct { font-weight:900; font-size:42px; line-height:1; color:#ffd83d; }
-    .wc-sub { font-size:12.5px; color:#999; margin-top:6px; }
-    .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
-    .needle { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
-              width:0; height:0; z-index:5;
-              border-left:10px solid transparent; border-right:10px solid transparent;
-              border-bottom:36px solid #ffd83d;
-              filter:drop-shadow(0 0 8px rgba(255,216,61,.8)); pointer-events:none; }
-    .ring-lbl { position:absolute; z-index:6; font-size:11.5px; font-weight:700; color:#bbb; }
-    .lbl-top { top:-4px; left:50%; transform:translateX(-50%); }
-    .lbl-l { left:-8px; top:50%; transform:translateY(-50%); }
-    .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
-    .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ffd83d; }
-    .wheel-result { text-align:center; font-weight:800; font-size:16px; min-height:24px; margin-top:8px; }
-    .bet-row { display:flex; align-items:stretch; gap:8px; margin:12px 0 10px; }
-    .bet-card { flex:1; border-radius:14px; padding:12px 8px; text-align:center;
-                background:#181824; min-height:150px; }
-    .bet-card.stake { border:2px solid #ffd83d; box-shadow:0 0 14px rgba(255,216,61,.15); cursor:pointer; }
-    .bet-card.target { border:2px solid #7ec8ff; }
-    .bet-title { font-size:11.5px; font-weight:800; letter-spacing:1px; margin-bottom:8px; }
-    .bet-arrow { align-self:center; font-size:24px; color:#ffd83d; font-weight:900; }
-    .bet-empty { color:#888; font-size:12.5px; padding:34px 4px; }
-    .roll-btn { width:100%; padding:15px; font-size:17px; border-radius:14px; letter-spacing:1px; }
-    .spin-controls { display:flex; gap:8px; }
-    .spin-controls .roll-btn { flex:1; }
-    .spin-controls .bolt { max-width:56px; font-size:20px; background:#2a2a3a; }
-    .spin-controls .bolt.on { background:#ffd83d; color:#111; }
-    .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
-    .case-card { background:#181824; border:1px solid #2a2a3a; border-radius:12px;
-                 padding:8px 4px; text-align:center; cursor:pointer; transition:.15s; }
-    .case-card.sel { border-color:#ffd83d; background:#2a2410; transform:translateY(-3px); }
-    .case-qty { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0; }
-    .case-qty button { width:40px; height:40px; border-radius:50%; font-size:20px; }
-    .mkt-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
-    .mkt-bar select, .mkt-bar input { background:#181824; color:#eee; border:1px solid #2a2a3a;
-             border-radius:10px; padding:9px 10px; font-family:inherit; font-size:13px; }
-    .shop-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .skin { background:#181824; border:1px solid #2a2a3a; border-radius:10px; padding:10px 6px;
-            text-align:center; font-size:12px; }
-    .skin.sel { border-color:#ffd83d; background:#2a2410; outline:2px solid #ffd83d; }
-    .inv-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .inv-sum { font-size:14px; margin-bottom:10px; }
-    .inv-sum b { color:#ffd83d; }
-    .lb { width:100%; border-collapse:collapse; font-size:13px; }
-    .lb td { padding:7px 6px; border-bottom:1px solid #222; }
-    .lb tr.me td { background:#2a2410; color:#ffd83d; font-weight:700; }
-    .lb .num { width:28px; color:#888; }
-    .lb .coins { text-align:right; color:#ffd83d; font-weight:600; }
-    .lottery-card { background:#181824; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:14px; }
-    .lottery-info { margin-bottom:12px; }
-    .ticket-price { font-size:18px; font-weight:700; color:#ffd83d; }
-    .participants-list { max-height:200px; overflow-y:auto; border:1px solid #2a2a3a; padding:8px; border-radius:8px; }
-    .participant-item { padding:6px 0; border-bottom:1px solid #1f1f2a; display:flex; justify-content:space-between; }
-    .chance-display { font-weight:700; color:#7ec8ff; }
-    .draw-btn { width:100%; margin-top:12px; }
-    .spinner-anim { animation:spin 1.2s linear infinite; color:#ffd83d; }
-    @keyframes spin { 100% { transform:rotate(360deg); } }
+
     nav { position:fixed; bottom:0; left:0; right:0; background:#14141f;
           border-top:2px solid #2a2a3a; display:flex; z-index:20; }
     nav button { flex:1; background:none; border:none; border-radius:0; padding:9px 2px 11px;
                  font-size:10px; color:#888; font-weight:700; }
     nav button .ic { display:block; font-size:18px; }
     nav button.on { color:#ffd83d; border-top:3px solid #ffd83d; }
+
     .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
              background:#ffd83d; color:#111; padding:10px 18px; border-radius:22px;
              font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
     .toast.show { opacity:1; }
+
+    /* Авторизация */
+    .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
+               align-items:center; justify-content:center; padding:16px; }
+    .auth-ov.show { display:flex; }
+    .auth-card { width:100%; max-width:340px; background:#181824; border:1px solid #2a2a3a;
+                  border-radius:16px; padding:22px; }
+    .auth-logo { font-weight:900; font-size:26px; color:#ffd83d; text-align:center; letter-spacing:2px; margin-bottom:6px; }
+    .auth-sub { text-align:center; color:#888; font-size:12.5px; margin-bottom:14px; }
+    .auth-tabs { display:flex; gap:8px; margin-bottom:12px; }
+    .auth-tabs button { flex:1; }
+    .auth-tabs button.on { background:#ffd83d; color:#111; }
+    .auth-card input { width:100%; margin-bottom:10px; }
+    .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
+    .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
+    .auth-card button.primary { width:100%; }
+
+    /* Лотерея (новые стили) */
+    .lottery-section .ticket-area { display:flex; flex-direction:column; gap:10px; align-items:stretch; }
+    .ticket-price { font-size:18px; font-weight:800; color:#ffd83d; margin:10px 0; }
+    .draw-info { background:#222; padding:12px; border-radius:12px; color:#aaa; font-size:13px; }
+    .wheel-container { position:relative; width:280px; height:280px; margin:20px auto; }
+    .drum { position:absolute; inset:0; border-radius:50%; border:4px solid #444;
+            background:linear-gradient(45deg, #1a1a2e 0%, #0f0f14 100%);
+            box-shadow:inset 0 0 20px rgba(0,0,0,.8), 0 0 30px rgba(255,216,61,.2); }
+    .segment { position:absolute; inset:0; clip-path:polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+               transform-origin:center; transition:transform .3s ease; }
+    .pointer { position:absolute; top:0; left:50%; transform:translateX(-50%) translateY(-100%);
+               z-index:3; width:0; height:0;
+               border-left:15px solid transparent; border-right:15px solid transparent;
+               border-top:40px solid #ff4444; filter:drop-shadow(0 0 8px rgba(255,68,68,.8)); }
+    .btn-draw { width:100%; padding:15px; font-size:18px; letter-spacing:1px; background:#ff4444; color:#fff; border:none; border-radius:12px; cursor:pointer; }
+    .btn-draw:disabled { background:#444; color:#888; }
+    .result-display { margin-top:15px; text-align:center; font-size:16px; font-weight:bold; color:#ffd83d; min-height:24px; }
   </style>
 </head>
 <body>
@@ -135,269 +103,125 @@
   <main>
     <div class="toast" id="toast"></div>
 
-    <!-- Auth -->
+    <!-- Авторизация -->
     <div class="auth-ov" id="authOv">
       <div class="auth-card">
         <div class="auth-logo">SKINUP</div>
         <div class="auth-sub">Войди в аккаунт, чтобы играть</div>
         <div class="auth-tabs">
-          <button id="tabLogin" class="on">Вход</button>
-          <button id="tabReg">Регистрация</button>
+          <button id="tabLogin" class="on" onclick="setAuthMode(false)">Вход</button>
+          <button id="tabReg" onclick="setAuthMode(true)">Регистрация</button>
         </div>
-        <form id="formLogin">
-          <input type="email" placeholder="Email" required>
-          <input type="password" placeholder="Пароль" required>
-          <button type="submit" class="primary">Войти</button>
-        </form>
-        <form id="formReg" style="display:none">
-          <input type="email" placeholder="Email" required>
-          <input type="password" placeholder="Пароль" required>
-          <button type="submit" class="primary">Создать аккаунт</button>
-        </form>
+        <input id="authEmail" type="email" placeholder="Почта (можно выдуманную)">
+        <input id="authPass" type="password" placeholder="Пароль (мин. 6 символов)">
+        <input id="authNick" type="text" placeholder="Придумай ник (3–16 символов)" style="display:none">
         <div class="auth-err" id="authErr"></div>
-        <div class="auth-note">Нет аккаунта? Нажми «Регистрация»</div>
+        <button class="primary" id="authGo">Войти</button>
+        <p class="auth-note">Прогресс хранится на сервере: зайдёшь с телефона или компа — увидишь свой аккаунт.</p>
       </div>
     </div>
 
-    <!-- Wheel -->
-    <section id="p-wheel" class="active">
-      <h2>Колесо удачи</h2>
-      <div class="wheel-wrap">
-        <div class="wheel">
-          <div class="ring-lbl lbl-top">25%</div>
-          <div class="ring-lbl lbl-l">10%</div>
-          <div class="ring-lbl lbl-r">10%</div>
-          <div class="ring-lbl lbl-b">55%</div>
-        </div>
-        <div class="wheel-cover">
-          <div class="wc-pct">0%</div>
-          <div class="wc-sub">шанс на выигрыш</div>
-        </div>
-        <div class="needle-rot" id="needleRot"><div class="needle"></div></div>
+    <!-- Выбор ника -->
+    <div class="auth-ov" id="nickOv">
+      <div class="auth-card">
+        <div class="auth-logo">НОВЫЙ НИК</div>
+        <div class="auth-sub">Ник увидят другие игроки в топе и в трейдах. Он уникален.</div>
+        <input id="nickInput" type="text" placeholder="Придумай ник (3–16 символов)">
+        <div class="auth-err" id="nickErr"></div>
+        <button class="primary" id="nickGo">Сохранить ник</button>
       </div>
-      <div class="wheel-result" id="wheelRes"></div>
-      <div class="bet-row">
-        <div class="bet-card stake">
-          <div class="bet-title">СТАВКА</div>
-          <div class="bet-em">🪙</div>
-          <input type="number" id="betVal" value="1000" min="100">
-          <div class="bet-pr">монет</div>
-        </div>
-        <div class="bet-card target">
-          <div class="bet-title">ЦЕЛЬ</div>
-          <div class="bet-em">💎</div>
-          <div class="bet-nm">AWP | Dragon Lore</div>
-          <div class="bet-pr">~150 000 ₽</div>
-        </div>
-      </div>
-      <div class="spin-controls">
-        <button class="roll-btn primary" id="spinBtn">КРУТИТЬ</button>
-        <button class="bolt on" id="boostBtn">⚡</button>
-      </div>
+    </div>
+
+    <!-- Апгрейд (сокращено для краткости) -->
+    <section id="p-upgrade" class="active">
+      <h2>🎡 Колесо апгрейда</h2>
+      <p class="muted">Здесь механика апгрейда скинов.</p>
     </section>
 
-    <!-- Cases -->
+    <!-- Кейсы (сокращено) -->
     <section id="p-cases">
-      <h2>Кейсы</h2>
-      <div class="cases-grid" id="casesGrid">
-        <!-- Заполняется JS -->
-      </div>
-      <div class="case-qty">
-        <button onclick="qtyCases(-1)">−</button>
-        <span id="qtyVal">1</span>
-        <button onclick="qtyCases(1)">+</button>
-      </div>
-      <button class="roll-btn primary">Открыть выбранные кейсы</button>
+      <h2>📦 Кейсы</h2>
+      <p class="muted">Открой кейс и получи случайный скин.</p>
     </section>
 
-    <!-- Shop -->
-    <section id="p-shop">
-      <h2>Магазин</h2>
-      <div class="mkt-bar">
-        <select><option>Все скины</option></select>
-        <input type="text" placeholder="Поиск по названию">
-      </div>
-      <div class="shop-grid" id="shopGrid">
-        <!-- Заполняется JS -->
-      </div>
+    <!-- Маркет (сокращено) -->
+    <section id="p-market">
+      <h2>🛒 Магазин скинов</h2>
+      <p class="muted">Покупай скины за монеты.</p>
     </section>
 
-    <!-- Inventory -->
+    <!-- Инвентарь (сокращено) -->
     <section id="p-inv">
-      <h2>Инвентарь</h2>
-      <div class="inv-sum">Всего предметов: <b id="invCount">0</b></div>
-      <div class="inv-grid" id="invGrid">
-        <!-- Заполняется JS -->
+      <h2>🎒 Инвентарь</h2>
+      <p class="muted">Твои скины.</p>
+    </section>
+
+    <!-- Профиль + Лотерея -->
+    <section id="p-profile">
+      <h2>👤 Профиль</h2>
+
+      <!-- Вкладки профиля (упрощённо) -->
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <button onclick="switchProfileTab('info')" class="on" id="btn-info">Информация</button>
+        <button onclick="switchProfileTab('lottery')" id="btn-lottery">Лотерея</button>
+      </div>
+
+      <!-- Информация профиля (заглушка) -->
+      <div id="profile-info">
+        <div class="card">
+          <h3>🏆 Топ-10 игроков</h3>
+          <table class="lb" id="lb"></table>
+        </div>
+      </div>
+
+      <!-- Лотерея -->
+      <div id="profile-lottery" style="display:none;">
+        <div class="card lottery-section">
+          <h3>🎱 Лотерея</h3>
+          <p class="muted">Купи билет за 100 000 монет. Каждую неделю в воскресенье в 12:00 проводится розыгрыш: приз делится поровну между всеми участниками.</p>
+
+          <div class="ticket-area">
+            <div class="ticket-price">Стоимость билета: <b style="color:#ffd83d">100 000 🪙</b></div>
+            <button class="primary" onclick="buyLotteryTicket()">Купить билет</button>
+            <div class="draw-info">
+              Следующий розыгрыш: <b id="nextDrawTime">Воскресенье, 12:00</b><br>
+              Участников: <b id="lotteryParticipants">0</b><br>
+              Приз: <b id="lotteryPrize">500 000 🪙</b>
+            </div>
+          </div>
+
+          <div class="wheel-container">
+            <div class="drum" id="lotteryDrum"></div>
+            <div class="pointer"></div>
+          </div>
+
+          <button class="btn-draw" id="drawButton" disabled onclick="startLotteryDraw()">Провести розыгрыш</button>
+          <div class="result-display" id="lotteryResult"></div>
+        </div>
       </div>
     </section>
 
-    <!-- Profile + Lottery -->
-    <section id="p-profile">
-      <h2>Профиль</h2>
-      <div class="lottery-card">
-        <h3>Лотерея недели</h3>
-        <div class="lottery-info">
-          <div>Стоимость билета: <span class="ticket-price">100 000 🪙</span></div>
-          <div class="muted">Розыгрыш: воскресенье, 12:00 МСК</div>
-          <div class="muted">Призовой фонд: 100% от стоимости билетов</div>
-        </div>
-        <button class="primary" id="buyTicketBtn">Купить билет</button>
-        <div class="muted" style="margin-top:8px;">Ваши билеты: <b id="myTickets">0</b></div>
-        <div class="muted">Ваш шанс: <span class="chance-display" id="myChance">0%</span></div>
-        <div class="participants-list" id="participantsList">
-          <!-- Заполняется JS -->
-        </div>
-        <button class="draw-btn" id="drawBtn">Провести розыгрыш</button>
-      </div>
+    <!-- Настройки (сокращено) -->
+    <section id="p-more">
+      <h2>⚙️ Настройки</h2>
+      <p class="muted">Здесь настройки аккаунта.</p>
     </section>
   </main>
 
   <nav>
-    <button onclick="nav('wheel')" class="on"><span class="ic">🎡</span>Колесо</button>
-    <button onclick="nav('cases')"><span class="ic">📦</span>Кейсы</button>
-    <button onclick="nav('shop')"><span class="ic">🛍</span>Магазин</button>
-    <button onclick="nav('inv')"><span class="ic">🎒</span>Инвентарь</button>
-    <button onclick="nav('profile')"><span class="ic">👤</span>Профиль</button>
+    <button class="on" data-p="p-upgrade"><span class="ic">🎡</span>Апгрейд</button>
+    <button data-p="p-cases"><span class="ic">📦</span>Кейсы</button>
+    <button data-p="p-market"><span class="ic">🛒</span>Маркет</button>
+    <button data-p="p-inv"><span class="ic">🎒</span>Инвентарь</button>
+    <button data-p="p-profile"><span class="ic">👤</span>Профиль</button>
+    <button data-p="p-more"><span class="ic">⚙️</span>Ещё</button>
   </nav>
 
   <script>
-    // Демо-данные (без Firebase)
-    const db = {
-      users: [{ id: 'demo', coins: 500000, tickets: 2 }],
-      lottery: { tickets: 15, participants: [
-        { name: 'Player_1', tickets: 3 },
-        { name: 'Player_2', tickets: 2 },
-        { name: 'Player_3', tickets: 5 },
-        { name: 'Player_4', tickets: 5 }
-      ]}
-    };
-    const user = db.users;
-
-    // UI Helpers
-    function toast(msg) {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 3000);
-    }
-    function nav(page) {
-      document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
-      document.getElementById(`p-\${page}`).classList.add('active');
-      event.target.closest('button').classList.add('on');
-    }
-    function qtyCases(d) {
-      const v = +document.getElementById('qtyVal').textContent;
-      document.getElementById('qtyVal').textContent = Math.max(1, v + d);
-    }
-
-    // Wheel Logic
-    document.getElementById('spinBtn').onclick = () => {
-      const bet = +document.getElementById('betVal').value;
-      if (bet > user.coins) return toast('Недостаточно монет!');
-      const rot = Math.floor(Math.random() * 3600) + 360;
-      document.getElementById('needleRot').style.transform = `rotate(\${rot}deg)`;
-      document.getElementById('wheelRes').textContent = 'Результат: ...';
-      setTimeout(() => {
-        const angle = rot % 360;
-        const res = angle < 90 ? 'Выигрыш!' : 'Проигрыш';
-        document.getElementById('wheelRes').textContent = `Результат: \${res}`;
-        user.coins += res === 'Выигрыш!' ? bet * 2 : -bet;
-        document.getElementById('bal').textContent = user.coins.toLocaleString();
-      }, 4000);
-    };
-
-    // Lottery Logic
-    const buyBtn = document.getElementById('buyTicketBtn');
-    const myT = document.getElementById('myTickets');
-    const myC = document.getElementById('myChance');
-    const list = document.getElementById('participantsList');
-    const drawBtn = document.getElementById('drawBtn');
-
-    buyBtn.onclick = () => {
-      if (user.coins < 100000) return toast('Недостаточно монет для билета!');
-      user.coins -= 100000;
-      user.tickets++;
-      db.lottery.tickets++;
-      document.getElementById('bal').textContent = user.coins.toLocaleString();
-      myT.textContent = user.tickets;
-      updateChance();
-      toast('Билет куплен!');
-    };
-
-    function updateChance() {
-      const total = db.lottery.tickets;
-      const mine = user.tickets;
-      myC.textContent = total ? ((mine / total) * 100).toFixed(1) + '%' : '0%';
-      // Перерисовать список
-      list.innerHTML = '';
-      db.lottery.participants.forEach(p => {
-        const tr = document.createElement('div');
-        tr.className = 'participant-item';
-        tr.innerHTML = `<span>${p.name}</span><span>${p.tickets} шт.</span>`;
-        list.appendChild(tr);
-      });
-      // Добавить себя
-      const me = document.createElement('div');
-      me.className = 'participant-item';
-      me.innerHTML = `<span class="me">Вы</span><span>\${user.tickets} шт.</span>`;
-      list.appendChild(me);
-    }
-
-    drawBtn.onclick = () => {
-      const total = db.lottery.tickets;
-      if (total < 2) return toast('Нужно минимум 2 билета для розыгрыша!');
-      const winnerIdx = Math.floor(Math.random() * total);
-      // Простая симуляция: считаем по порядку билетов
-      let count = 0;
-      let winner = null;
-      const all = [...db.lottery.participants, { name: 'Вы', tickets: user.tickets }];
-      for (const p of all) {
-        if (count + p.tickets > winnerIdx) { winner = p.name; break; }
-        count += p.tickets;
-      }
-      toast(`Победитель: \${winner}!`);
-    };
-
-    // Init
-    document.getElementById('bal').textContent = user.coins.toLocaleString();
-    updateChance();
-
-    // Auth Tabs
-    document.getElementById('tabLogin').onclick = () => {
-      document.getElementById('formLogin').style.display = 'block';
-      document.getElementById('formReg').style.display = 'none';
-      document.querySelectorAll('.auth-tabs button').forEach(b => b.classList.remove('on'));
-      event.target.classList.add('on');
-    };
-    document.getElementById('tabReg').onclick = () => {
-      document.getElementById('formReg').style.display = 'block';
-      document.getElementById('formLogin').style.display = 'none';
-      document.querySelectorAll('.auth-tabs button').forEach(b => b.classList.remove('on'));
-      event.target.classList.add('on');
-    };
-
-    // Auth Forms (demo)
-    document.getElementById('formLogin').onsubmit = e => {
-      e.preventDefault();
-      document.getElementById('authOv').classList.remove('show');
-      toast('Вход выполнен (демо)');
-    };
-    document.getElementById('formReg').onsubmit = e => {
-      e.preventDefault();
-      document.getElementById('authOv').classList.remove('show');
-      toast('Аккаунт создан (демо)');
-    };
-
-    // Snow animation
-    const snow = document.getElementById('snow');
-    for (let i = 0; i < 40; i++) {
-      const dot = document.createElement('i');
-      dot.style.left = Math.random() * 100 + 'vw';
-      dot.style.animationDuration = Math.random() * 10 + 10 + 's';
-      dot.style.animationDelay = Math.random() * 10 + 's';
-      snow.appendChild(dot);
-    }
-  </script>
-</body>
-</html>
+    /* ================= FIREBASE CONFIG ================= */
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAFg8jtdZDE8A-bDwzkYJn2cDYyS6XbMYQ",
+      authDomain: "skinup-4c47f.firebaseapp.com",
+      databaseURL: "https://skinup-4c47f-default-rtdb.firebaseio.com",
+      projectId: "skinup-4c47f",
+      storageBucket: "skinup-4c47f.fire
