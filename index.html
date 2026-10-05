@@ -1,227 +1,406 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
-  <link rel="icon" type="image/png" href="favicon.png">
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif;
+         /* чёрный фон с едва заметным тёплым отсветом снизу */
+         background:radial-gradient(circle at 50% 120%, rgba(255,216,61,.05) 0%, rgba(255,216,61,.015) 45%, transparent 70%), #0d0d14;
+         background-attachment:fixed;
+         color:#eee;
+         padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
 
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Segoe UI',Arial,sans-serif;
-           background:radial-gradient(circle at 50% 120%, rgba(255,216,61,.05) 0%, rgba(255,216,61,.015) 45%, transparent 70%), #0d0d14;
-           background-attachment:fixed; color:#eee; padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
+  /* ===== ЖЁЛТЫЕ КРАПИНКИ (падающий «снег») ===== */
+  #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+  #snow i { position:absolute; top:-14px; border-radius:50%; background:#ffd83d;
+            box-shadow:0 0 6px rgba(255,216,61,.55);
+            animation:fall linear infinite; }
+  @keyframes fall { to { transform:translateY(112vh); } }
 
-    /* Снежинки */
-    #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
-    #snow i { position:absolute; top:-14px; border-radius:50%; background:#ffd83d;
-              box-shadow:0 0 6px rgba(255,216,61,.55);
-              animation:fall linear infinite; }
-    @keyframes fall { to { transform:translateY(112vh); } }
+  header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
+           display:flex; justify-content:space-between; align-items:center;
+           border-bottom:2px solid #ffd83d; }
+  header .logo { font-weight:900; font-size:20px; color:#ffd83d; letter-spacing:1px; }
+  header .balance { font-weight:700; color:#ffd83d; background:#222; padding:6px 12px; border-radius:20px; }
+  main { padding:14px; position:relative; z-index:2; }
+  section { display:none; }
+  section.active { display:block; }
+  h2 { margin:14px 0 10px; font-size:18px; }
+  h3 { font-size:15px; margin-bottom:8px; }
+  .muted { color:#888; font-size:13px; margin-bottom:12px; }
+  .card { background:#181824; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:14px; }
+  button { font-family:inherit; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
+           cursor:pointer; background:#2a2a3a; color:#fff; }
+  button:active { transform:scale(.97); }
+  button.primary { background:#ffd83d; color:#111; }
+  button:disabled { opacity:.4; cursor:default; }
+  input[type="text"], input[type="email"], input[type="password"] {
+    background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
+    padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
+  .chances { display:flex; gap:8px; margin:10px 0; }
+  .chances button { flex:1; border-radius:12px; border:2px solid #2a2a3a; background:#181824; color:#ccc; }
+  .chances button.on { outline:none; }
+  .chances button.on[data-ch="35"] { border-color:#ff6b6b; color:#ff6b6b; background:#2a1418; }
+  .chances button.on[data-ch="50"] { border-color:#ffd83d; color:#ffd83d; background:#2a2410; }
+  .chances button.on[data-ch="75"] { border-color:#8f8; color:#8f8; background:#102416; }
 
-    header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
-             display:flex; justify-content:space-between; align-items:center;
-             border-bottom:2px solid #ffd83d; }
-    header .logo { font-weight:900; font-size:20px; color:#ffd83d; letter-spacing:1px; }
-    header .balance { font-weight:700; color:#ffd83d; background:#222; padding:6px 12px; border-radius:20px; }
+  /* ===== ЭКРАН ВХОДА ===== */
+  .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
+             align-items:center; justify-content:center; padding:16px; }
+  .auth-ov.show { display:flex; }
+  .auth-card { width:100%; max-width:340px; background:#181824; border:1px solid #2a2a3a;
+               border-radius:16px; padding:22px; }
+  .auth-logo { font-weight:900; font-size:26px; color:#ffd83d; text-align:center;
+               letter-spacing:2px; margin-bottom:6px; }
+  .auth-sub { text-align:center; color:#888; font-size:12.5px; margin-bottom:14px; }
+  .auth-tabs { display:flex; gap:8px; margin-bottom:12px; }
+  .auth-tabs button { flex:1; }
+  .auth-tabs button.on { background:#ffd83d; color:#111; }
+  .auth-card input { width:100%; margin-bottom:10px; }
+  .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
+  .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
+  .auth-card button.primary { width:100%; }
 
-    main { padding:14px; position:relative; z-index:2; }
-    section { display:none; }
-    section.active { display:block; }
+  /* ===== 1. КОЛЕСО ===== */
+  .wheel-wrap { position:relative; width:280px; height:280px; margin:14px auto 8px; }
+  .wheel { position:absolute; inset:0; border-radius:50%; background:#111;
+           box-shadow:0 0 30px rgba(255,216,61,.2), inset 0 0 22px rgba(0,0,0,.6); }
+  .wheel-cover { position:absolute; inset:30px; border-radius:50%;
+           background:radial-gradient(circle at 50% 35%, #1c1c2a, #0e0e16);
+           border:1px solid #2a2a3a; z-index:4;
+           display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .wc-pct { font-weight:900; font-size:42px; line-height:1; color:#ffd83d; }
+  .wc-sub { font-size:12.5px; color:#999; margin-top:6px; }
+  .needle-rot { position:absolute; inset:0; z-index:5; pointer-events:none; will-change:transform; }
+  .needle { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
+            width:0; height:0; z-index:5;
+            border-left:10px solid transparent; border-right:10px solid transparent;
+            border-bottom:36px solid #ffd83d;
+            filter:drop-shadow(0 0 8px rgba(255,216,61,.8)); pointer-events:none; }
+  .ring-lbl { position:absolute; z-index:6; font-size:11.5px; font-weight:700; color:#bbb; }
+  .lbl-top { top:-4px; left:50%; transform:translateX(-50%); }
+  .lbl-l { left:-8px; top:50%; transform:translateY(-50%); }
+  .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
+  .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ffd83d; }
+  .wheel-result { text-align:center; font-weight:800; font-size:16px; min-height:24px; margin-top:8px; }
 
-    h2 { margin:14px 0 10px; font-size:18px; }
-    .muted { color:#888; font-size:13px; margin-bottom:12px; }
-    .card { background:#181824; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:14px; }
+  /* ===== СТАВКА И ЦЕЛЬ ===== */
+  .bet-row { display:flex; align-items:stretch; gap:8px; margin:12px 0 10px; }
+  .bet-card { flex:1; border-radius:14px; padding:12px 8px; text-align:center;
+              background:#181824; min-height:150px; }
+  .bet-card.stake { border:2px solid #ffd83d; box-shadow:0 0 14px rgba(255,216,61,.15); cursor:pointer; }
+  .bet-card.target { border:2px solid #7ec8ff; }
+  .bet-title { font-size:11.5px; font-weight:800; letter-spacing:1px; margin-bottom:8px; }
+  .bet-card.stake .bet-title { color:#ffd83d; }
+  .bet-card.target .bet-title { color:#7ec8ff; }
+  .bet-arrow { align-self:center; font-size:24px; color:#ffd83d; font-weight:900; }
+  .bet-em { font-size:42px; line-height:1.15; }
+  .bet-nm { font-size:12px; margin:6px 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bet-pr { font-weight:800; color:#ffd83d; font-size:15px; }
+  .bet-empty { color:#888; font-size:12.5px; padding:34px 4px; }
+  .bet-empty span { display:block; font-size:11px; color:#666; margin-top:6px; }
+  .roll-btn { width:100%; padding:15px; font-size:17px; border-radius:14px; letter-spacing:1px; }
+  .spin-controls { display:flex; gap:8px; }
+  .spin-controls .roll-btn { flex:1; }
+  .spin-controls .bolt { max-width:56px; font-size:20px; background:#2a2a3a; }
+  .spin-controls .bolt.on { background:#ffd83d; color:#111; }
+  #upgPicker { margin-top:10px; }
 
-    button { font-family:inherit; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
-             cursor:pointer; background:#2a2a3a; color:#fff; }
-    button:active { transform:scale(.97); }
-    button.primary { background:#ffd83d; color:#111; }
-    button:disabled { opacity:.4; cursor:default; }
+  /* ===== 2. КЕЙСЫ ===== */
+  .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .case-card { background:#181824; border:1px solid #2a2a3a; border-radius:12px;
+               padding:8px 4px; text-align:center; cursor:pointer; transition:.15s; }
+  .case-card.sel { border-color:#ffd83d; background:#2a2410; transform:translateY(-3px); }
+  .case-card .em { font-size:26px; }
+  .case-card .nm { font-size:10.5px; font-weight:700; margin-top:3px; }
+  .case-card .pr { font-size:10px; color:#ffd83d; }
+  .case-card .mx { font-size:9px; color:#888; }
+  @media (max-width:420px){ .case-card .nm{font-size:9px;} .case-card .em{font-size:22px;} }
+  .case-qty { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0; }
+  .case-qty button { width:40px; height:40px; border-radius:50%; font-size:20px; }
 
-    input[type="text"], input[type="email"], input[type="password"] {
-      background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
-      padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
+  .tapes-ov { position:fixed; inset:0; background:rgba(5,5,10,.96); z-index:60;
+              display:none; flex-direction:column; padding:14px; overflow-y:auto; }
+  .tapes-ov.show { display:flex; }
+  .tapes-ov h3 { text-align:center; color:#ffd83d; margin:6px 0 10px; }
+  .tape { position:relative; height:92px; overflow:hidden; background:#0f0f18;
+          border:1px solid #2a2a3a; border-radius:12px; margin-bottom:10px; }
+  .tape .strip { position:absolute; top:0; left:0; height:100%; display:flex; align-items:center; will-change:transform; }
+  .titem { flex:0 0 104px; margin-right:6px; height:80px; background:#181824; border:1px solid #2a2a3a;
+           border-radius:10px; display:flex; flex-direction-column; align-items:center; justify-content:center;
+           font-size:10px; text-align:center; }
+  .titem .em { font-size:26px; line-height:1.1; }
+  .titem .nm { font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:96px; }
+  .titem .pr { font-size:9.5px; color:#ffd83d; font-weight:700; }
+  .tape .marker { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px;
+                  background:#ffd83d; box-shadow:0 0 10px #ffd83d; z-index:3; }
+  .tape::before, .tape::after { content:""; position:absolute; top:0; bottom:0; width:70px; z-index:2; pointer-events:none; }
+  .tape::before { left:0; background:linear-gradient(90deg,#0f0f18,transparent); }
+  .tape::after { right:0; background:linear-gradient(270deg,#0f0f18,transparent); }
+  .tape.done { border-color:#ffd83d; }
+  .tapes-res { text-align:center; font-weight:800; min-height:22px; margin:4px 0 10px; color:#ffd83d; }
 
-    nav { position:fixed; bottom:0; left:0; right:0; background:#14141f;
-          border-top:2px solid #2a2a3a; display:flex; z-index:20; }
-    nav button { flex:1; background:none; border:none; border-radius:0; padding:9px 2px 11px;
-                 font-size:10px; color:#888; font-weight:700; }
-    nav button .ic { display:block; font-size:18px; }
-    nav button.on { color:#ffd83d; border-top:3px solid #ffd83d; }
+  /* ===== МАРКЕТ ===== */
+  .mkt-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .mkt-bar select, .mkt-bar input { background:#181824; color:#eee; border:1px solid #2a2a3a;
+           border-radius:10px; padding:9px 10px; font-family:inherit; font-size:13px; }
+  .mkt-bar input { flex:1; min-width:140px; }
+  .mkt-nav { display:flex; align-items:center; justify-content:center; gap:12px; margin:12px 0; font-size:13px; }
+  .mkt-nav button { padding:8px 14px; }
+  .shop-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .skin { background:#181824; border:1px solid #2a2a3a; border-radius:10px; padding:10px 6px;
+          text-align:center; font-size:12px; }
+  .skin .em { font-size:28px; }
+  .skin .r { font-size:10px; }
+  .skin button { margin-top:6px; padding:5px 8px; font-size:11px; }
+  .skin.sel { border-color:#ffd83d; background:#2a2410; outline:2px solid #ffd83d; }
 
-    .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
-             background:#ffd83d; color:#111; padding:10px 18px; border-radius:22px;
-             font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
-    .toast.show { opacity:1; }
+  /* ===== ИНВЕНТАРЬ ===== */
+  .inv-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .inv-sum { font-size:14px; margin-bottom:10px; }
+  .inv-sum b { color:#ffd83d; }
 
-    /* Авторизация */
-    .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
-               align-items:center; justify-content:center; padding:16px; }
-    .auth-ov.show { display:flex; }
-    .auth-card { width:100%; max-width:340px; background:#181824; border:1px solid #2a2a3a;
-                  border-radius:16px; padding:22px; }
-    .auth-logo { font-weight:900; font-size:26px; color:#ffd83d; text-align:center; letter-spacing:2px; margin-bottom:6px; }
-    .auth-sub { text-align:center; color:#888; font-size:12.5px; margin-bottom:14px; }
-    .auth-tabs { display:flex; gap:8px; margin-bottom:12px; }
-    .auth-tabs button { flex:1; }
-    .auth-tabs button.on { background:#ffd83d; color:#111; }
-    .auth-card input { width:100%; margin-bottom:10px; }
-    .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
-    .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
-    .auth-card button.primary { width:100%; }
+  /* ===== 3. ПРОФИЛЬ ===== */
+  .lb { width:100%; border-collapse:collapse; font-size:13px; }
+  .lb td { padding:7px 6px; border-bottom:1px solid #222; }
+  .lb tr.me td { background:#2a2410; color:#ffd83d; font-weight:700; }
+  .lb .num { width:28px; color:#888; }
+  .lb .coins { text-align:right; color:#ffd83d; font-weight:600; }
+  .quest { display:flex; justify-content:space-between; align-items:center; gap:8px;
+           padding:9px 0; border-bottom:1px solid #222; }
+  .quest .info { flex:1; }
+  .quest .nm { font-size:13.5px; font-weight:600; }
+  .quest .bar { height:6px; background:#222; border-radius:4px; margin-top:5px; }
+  .quest .bar i { display:block; height:100%; background:#ffd83d; }
+  .quest .rw { font-size:11px; color:#8f8; margin-top:3px; }
+  .quest button { padding:6px 10px; font-size:12px; }
+  .tag { font-size:10px; background:#2a2a3a; border-radius:8px; padding:2px 7px; margin-left:6px; }
+  .tag.d { background:#1a2a3a; color:#7ec8ff; } .tag.w { background:#3a1a2a; color:#ff9ecb; }
 
-    /* Лотерея (новые стили) */
-    .lottery-section .ticket-area { display:flex; flex-direction:column; gap:10px; align-items:stretch; }
-    .ticket-price { font-size:18px; font-weight:800; color:#ffd83d; margin:10px 0; }
-    .draw-info { background:#222; padding:12px; border-radius:12px; color:#aaa; font-size:13px; }
-    .wheel-container { position:relative; width:280px; height:280px; margin:20px auto; }
-    .drum { position:absolute; inset:0; border-radius:50%; border:4px solid #444;
-            background:linear-gradient(45deg, #1a1a2e 0%, #0f0f14 100%);
-            box-shadow:inset 0 0 20px rgba(0,0,0,.8), 0 0 30px rgba(255,216,61,.2); }
-    .segment { position:absolute; inset:0; clip-path:polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-               transform-origin:center; transition:transform .3s ease; }
-    .pointer { position:absolute; top:0; left:50%; transform:translateX(-50%) translateY(-100%);
-               z-index:3; width:0; height:0;
-               border-left:15px solid transparent; border-right:15px solid transparent;
-               border-top:40px solid #ff4444; filter:drop-shadow(0 0 8px rgba(255,68,68,.8)); }
-    .btn-draw { width:100%; padding:15px; font-size:18px; letter-spacing:1px; background:#ff4444; color:#fff; border:none; border-radius:12px; cursor:pointer; }
-    .btn-draw:disabled { background:#444; color:#888; }
-    .result-display { margin-top:15px; text-align:center; font-size:16px; font-weight:bold; color:#ffd83d; min-height:24px; }
-  </style>
+  .trade-in { background:#0f0f18; border:1px solid #2a2a3a; border-radius:12px;
+              padding:10px; margin-bottom:8px; font-size:13px; }
+  .trade-in .tn { font-weight:700; color:#ffd83d; }
+  .trade-in .ti { color:#bbb; font-size:12px; margin:5px 0; }
+  .trade-in .tbtns { display:flex; gap:8px; margin-top:6px; }
+  .trade-in button { flex:1; padding:7px 4px; font-size:12px; }
+
+  .social-row { display:flex; align-items:center; gap:10px; padding:10px 0;
+                border-bottom:1px solid #222; }
+  .social-row:last-child { border-bottom:none; }
+  .social-row .ic { font-size:24px; }
+  .social-row .info { flex:1; }
+  .social-row .nm { font-weight:700; font-size:14px; }
+  .social-row .ds { font-size:12px; color:#888; }
+
+  .clicker-wrap { text-align:center; }
+  .click-circle { width:110px; height:110px; border-radius:50%; margin:14px auto;
+                  background:radial-gradient(circle at 35% 30%, #ffe98a, #ffd83d 60%, #d9a800);
+                  box-shadow:0 0 25px rgba(255,216,61,.5), inset 0 -6px 14px rgba(0,0,0,.25);
+                  border:4px solid #a87d00; font-size:44px; line-height:102px;
+                  cursor:pointer; user-select:none; touch-action:manipulation; }
+  .click-circle:active { transform:scale(.93); }
+  .click-info { font-size:12.5px; color:#bbb; }
+  .click-info b { color:#ffd83d; }
+  .click-warn { color:#ff6b6b; font-weight:700; font-size:13px; min-height:18px; margin-top:4px; }
+
+  .set-row { display:flex; justify-content:space-between; align-items:center;
+             padding:11px 0; border-bottom:1px solid #222; font-size:14px; }
+  .switch { width:46px; height:26px; border-radius:14px; background:#333; position:relative; cursor:pointer; }
+  .switch.on { background:#ffd83d; }
+  .switch i { position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%;
+              background:#fff; transition:.2s; }
+  .switch.on i { left:23px; }
+  .danger { background:#a02020; width:100%; margin-top:8px; }
+
+  nav { position:fixed; bottom:0; left:0; right:0; background:#14141f;
+        border-top:2px solid #2a2a3a; display:flex; z-index:20; }
+  nav button { flex:1; background:none; border:none; border-radius:0; padding:9px 2px 11px;
+               font-size:10px; color:#888; font-weight:700; }
+  nav button .ic { display:block; font-size:18px; }
+  nav button.on { color:#ffd83d; border-top:3px solid #ffd83d; }
+  .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
+           background:#ffd83d; color:#111; padding:10px 18px; border-radius:22px;
+           font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .prc { color:#ffd83d; }
+</style>
 </head>
 <body>
-  <div id="snow"></div>
-  <header>
-    <div class="logo">SKINUP</div>
-    <div class="balance">🪙 <span id="bal">0</span></div>
-  </header>
-  <main>
-    <div class="toast" id="toast"></div>
+<div id="snow"></div>
+<header>
+  <div class="logo">SKINUP</div>
+  <div class="balance">🪙 <span id="bal">0</span></div>
+</header>
+<main>
+  <div class="toast" id="toast"></div>
 
-    <!-- Авторизация -->
-    <div class="auth-ov" id="authOv">
-      <div class="auth-card">
-        <div class="auth-logo">SKINUP</div>
-        <div class="auth-sub">Войди в аккаунт, чтобы играть</div>
-        <div class="auth-tabs">
-          <button id="tabLogin" class="on" onclick="setAuthMode(false)">Вход</button>
-          <button id="tabReg" onclick="setAuthMode(true)">Регистрация</button>
-        </div>
-        <input id="authEmail" type="email" placeholder="Почта (можно выдуманную)">
-        <input id="authPass" type="password" placeholder="Пароль (мин. 6 символов)">
-        <input id="authNick" type="text" placeholder="Придумай ник (3–16 символов)" style="display:none">
-        <div class="auth-err" id="authErr"></div>
-        <button class="primary" id="authGo">Войти</button>
-        <p class="auth-note">Прогресс хранится на сервере: зайдёшь с телефона или компа — увидишь свой аккаунт.</p>
+  <!-- ===== ЭКРАН ВХОДА ===== -->
+  <div class="auth-ov" id="authOv">
+    <div class="auth-card">
+      <div class="auth-logo">SKINUP</div>
+      <div class="auth-sub">Войди в аккаунт, чтобы играть</div>
+      <div class="auth-tabs">
+        <button id="tabLogin" class="on" onclick="setAuthMode(false)">Вход</button>
+        <button id="tabReg" onclick="setAuthMode(true)">Регистрация</button>
+      </div>
+      <input id="authEmail" type="email" placeholder="Почта (можно выдуманную)">
+      <input id="authPass" type="password" placeholder="Пароль (мин. 6 символов)">
+      <input id="authNick" type="text" placeholder="Придумай ник (3–16 символов)" style="display:none">
+      <div class="auth-err" id="authErr"></div>
+      <button class="primary" id="authGo">Войти</button>
+      <p class="auth-note">Прогресс хранится на сервере: зайдёшь с телефона или компа — увидишь свой аккаунт.</p>
+    </div>
+  </div>
+
+  <!-- ===== ВЫБОР НИКА ===== -->
+  <div class="auth-ov" id="nickOv">
+    <div class="auth-card">
+      <div class="auth-logo">НОВЫЙ НИК</div>
+      <div class="auth-sub">Ник увидят другие игроки в топе и в трейдах. Он уникален.</div>
+      <input id="nickInput" type="text" placeholder="Придумай ник (3–16 символов)">
+      <div class="auth-err" id="nickErr"></div>
+      <button class="primary" id="nickGo">Сохранить ник</button>
+    </div>
+  </div>
+
+  <!-- ===== АПГРЕЙД ===== -->
+  <section id="p-upgrade" class="active">
+    <h2>🎡 Колесо апгрейда</h2>
+    <div class="chances" id="chances">
+      <button data-ch="35">35%</button>
+      <button data-ch="50" class="on">50%</button>
+      <button data-ch="75">75%</button>
+    </div>
+    <div class="wheel-wrap">
+      <div class="wheel" id="wheel"></div>
+      <div class="wheel-cover">
+        <div class="wc-pct" id="wheelPct">50%</div>
+        <div class="wc-sub" id="wheelSub">средний шанс</div>
+      </div>
+      <div class="needle-rot" id="needleRot">
+        <div class="needle"></div>
+      </div>
+      <div class="ring-lbl lbl-top">100%</div>
+      <div class="ring-lbl lbl-l">50%</div>
+      <div class="ring-lbl lbl-r">50%</div>
+      <div class="ring-lbl lbl-b">0%</div>
+    </div>
+    <div class="bet-row">
+      <div class="bet-card stake" id="betStake" onclick="toggleUpgPicker()">
+        <div class="bet-title">ВАША СТАВКА</div>
+        <div id="betStakeBody"><div class="bet-empty">Ничего не выбрано<span>нажми, чтобы выбрать скины</span></div></div>
+      </div>
+      <div class="bet-arrow">→</div>
+      <div class="bet-card target" id="betTarget">
+        <div class="bet-title">ЦЕЛЬ</div>
+        <div id="betTargetBody"><div class="bet-empty">—</div></div>
       </div>
     </div>
-
-    <!-- Выбор ника -->
-    <div class="auth-ov" id="nickOv">
-      <div class="auth-card">
-        <div class="auth-logo">НОВЫЙ НИК</div>
-        <div class="auth-sub">Ник увидят другие игроки в топе и в трейдах. Он уникален.</div>
-        <input id="nickInput" type="text" placeholder="Придумай ник (3–16 символов)">
-        <div class="auth-err" id="nickErr"></div>
-        <button class="primary" id="nickGo">Сохранить ник</button>
-      </div>
+    <div class="spin-controls">
+      <button class="primary roll-btn" id="btnSpin" onclick="spin()">⏏ ПРОКАЧАТЬ</button>
+      <button class="bolt" id="btnBolt" onclick="boost()">⚡</button>
     </div>
+    <div class="wheel-result" id="wheelRes">&nbsp;</div>
+    <p class="muted" style="margin-top:6px;">Нажми на карточку ставки, чтобы выбрать скины. При выигрыше каждый скин заменится на более дорогой, при проигрыше — сгорит. ⚡ — переключатель быстрого открытия кейсов.</p>
+    <div id="upgPicker" style="display:none;">
+      <h3>Выбери скины</h3>
+      <div class="inv-grid" id="upgInv"></div>
+      <button style="width:100%;margin-top:8px;" onclick="clearUpgSel()">Снять выделение</button>
+    </div>
+  </section>
 
-    <!-- Апгрейд (сокращено для краткости) -->
-    <section id="p-upgrade" class="active">
-      <h2>🎡 Колесо апгрейда</h2>
-      <p class="muted">Здесь механика апгрейда скинов.</p>
-    </section>
-
-    <!-- Кейсы (сокращено) -->
-    <section id="p-cases">
-      <h2>📦 Кейсы</h2>
-      <p class="muted">Открой кейс и получи случайный скин.</p>
-    </section>
-
-    <!-- Маркет (сокращено) -->
-    <section id="p-market">
-      <h2>🛒 Магазин скинов</h2>
-      <p class="muted">Покупай скины за монеты.</p>
-    </section>
-
-    <!-- Инвентарь (сокращено) -->
-    <section id="p-inv">
-      <h2>🎒 Инвентарь</h2>
-      <p class="muted">Твои скины.</p>
-    </section>
-
-    <!-- Профиль + Лотерея -->
-    <section id="p-profile">
-      <h2>👤 Профиль</h2>
-
-      <!-- Вкладки профиля (упрощённо) -->
-      <div style="display:flex; gap:10px; margin-bottom:15px;">
-        <button onclick="switchProfileTab('info')" class="on" id="btn-info">Информация</button>
-        <button onclick="switchProfileTab('lottery')" id="btn-lottery">Лотерея</button>
+  <!-- ===== КЕЙСЫ ===== -->
+  <section id="p-cases">
+    <h2>📦 Кейсы</h2>
+    <p class="muted">Выбери кейс, укажи количество — до 10 за раз. Откроешь — увидишь ленты прокрутки друг под другом.</p>
+    <div class="cases-grid" id="casesGrid"></div>
+    <div class="card" style="margin-top:12px;">
+      <h3 id="cpTitle">👀 Что может выпасть</h3>
+      <div class="muted" id="cpInfo"></div>
+      <div class="shop-grid" id="cpGrid"></div>
+      <div class="mkt-nav" id="cpNav" style="display:none;">
+        <button onclick="cpPageF(-1)">‹ Назад</button><span id="cpPageInfo"></span><button onclick="cpPageF(1)">Вперёд ›</button>
       </div>
+      <button style="width:100%;margin-top:8px;" onclick="toggleCpAll()">Показать всё содержимое</button>
+    </div>
+    <div class="case-qty">
+      <button onclick="chgQty(-1)">−</button>
+      <span id="qty">1</span> шт (до 10)
+      <button onclick="chgQty(1)">+</button>
+    </div>
+    <p style="text-align:center;margin-bottom:10px;">Итого: <b id="total" style="color:#ffd83d">100</b> монет</p>
+    <button class="primary" style="width:100%" onclick="openCases()">ОТКРЫТЬ КЕЙСЫ</button>
+  </section>
 
-      <!-- Информация профиля (заглушка) -->
-      <div id="profile-info">
-        <div class="card">
-          <h3>🏆 Топ-10 игроков</h3>
-          <table class="lb" id="lb"></table>
-        </div>
+  <!-- ===== МАРКЕТ ===== -->
+  <section id="p-market">
+    <h2>🛒 Магазин скинов</h2>
+    <p class="muted">10 500 скинов: от 1 🪙 до 100 000 000 000 🪙. M9 Bayonet | Пепел в продаже нет — его можно получить только по секретному промокоду.</p>
+    <div class="mkt-bar">
+      <select id="mktSort" onchange="mktChange()">
+        <option value="desc">Сначала дороже</option>
+        <option value="asc">Сначала дешевле</option>
+        <option value="rnd">Случайно</option>
+      </select>
+      <select id="mktRare" onchange="mktChange()">
+        <option value="-1">Все редкости</option>
+        <option value="0">Обычные</option>
+        <option value="1">Редкие</option>
+        <option value="2">Эпические</option>
+        <option value="3">Легендарные</option>
+        <option value="4">Мифические</option>
+        <option value="5">Божественные</option>
+      </select>
+      <input id="mktSearch" placeholder="Поиск скина…" oninput="mktChange()">
+    </div>
+    <div class="mkt-nav">
+      <button onclick="mktPage(-1)">‹ Назад</button>
+      <span id="mktPageInfo">1 / 1</span>
+      <button onclick="mktPage(1)">Вперёд ›</button>
+    </div>
+    <div class="shop-grid" id="shop"></div>
+  </section>
+
+  <!-- ===== ИНВЕНТАРЬ ===== -->
+  <section id="p-inv">
+    <h2>🎒 Инвентарь</h2>
+    <p class="muted">Все твои скины: купленные и выпавшие из кейсов. Можно продать за 60% цены — по одному или всё сразу.</p>
+    <div class="inv-sum">Скинов: <b id="invCount">0</b> · Общая стоимость: <b id="invSum">0 🪙</b></div>
+    <button class="primary" style="width:100%;margin-bottom:10px;" onclick="sellAll()">💸 ПРОДАТЬ ВСЁ</button>
+    <div class="inv-grid" id="inv"></div>
+    <h3 style="margin-top:18px;">🔗 Контракт</h3>
+    <p class="muted">Выбери ровно 3 скина и заключи контракт. Шанс 50/50: повезёт — получишь скин заметно дороже суммы всех трёх, не повезёт — останется лишь жалкий остаток.</p>
+    <div class="inv-grid" id="contractInv"></div>
+    <div class="inv-sum">Выбрано: <b id="cCount">0</b>/3 · Сумма: <b id="cSum">0 🪙</b></div>
+    <button class="primary" style="width:100%" onclick="makeContract()">ЗАКЛЮЧИТЬ КОНТРАКТ</button>
+    <div class="wheel-result" id="contractRes">&nbsp;</div>
+  </section>
+
+  <!-- ===== ПРОФИЛЬ ===== -->
+  <section id="p-profile">
+    <h2>👤 Профиль</h2>
+    <div class="card">
+      <div id="top10wrap"><h3>🏆 Топ-10 игроков</h3></div>
+      <div class="inv-sum">👥 Всего игроков: <b id="playersTotal">…</b></div>
+      <table class="lb" id="lb"></table>
+      <p class="muted" style="margin-top:8px;font-size:11px;" id="lbNote">Живой топ-10 из базы данных.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Трейды</h3>
+      <p class="muted">Отправь скины или монеты другому игроку по нику — он примет или отклонит.</p>
+      <div style="display:flex;gap:8px;margin:6px 0 10px;">
+        <input id="tradeNick" type="text" placeholder="Ник получателя" style="flex:1;">
+        <button class="primary" onclick="sendTrade()">Скины</button>
       </div>
-
-      <!-- Лотерея -->
-      <div id="profile-lottery" style="display:none;">
-        <div class="card lottery-section">
-          <h3>🎱 Лотерея</h3>
-          <p class="muted">Купи билет за 100 000 монет. Каждую неделю в воскресенье в 12:00 проводится розыгрыш: приз делится поровну между всеми участниками.</p>
-
-          <div class="ticket-area">
-            <div class="ticket-price">Стоимость билета: <b style="color:#ffd83d">100 000 🪙</b></div>
-            <button class="primary" onclick="buyLotteryTicket()">Купить билет</button>
-            <div class="draw-info">
-              Следующий розыгрыш: <b id="nextDrawTime">Воскресенье, 12:00</b><br>
-              Участников: <b id="lotteryParticipants">0</b><br>
-              Приз: <b id="lotteryPrize">500 000 🪙</b>
-            </div>
-          </div>
-
-          <div class="wheel-container">
-            <div class="drum" id="lotteryDrum"></div>
-            <div class="pointer"></div>
-          </div>
-
-          <button class="btn-draw" id="drawButton" disabled onclick="startLotteryDraw()">Провести розыгрыш</button>
-          <div class="result-display" id="lotteryResult"></div>
-        </div>
+      <div style="display:flex;gap:8px;margin:0 0 10px;">
+        <input id="tradeCoins" type="text" inputmode="numeric" placeholder="Сумма монет" style="flex:1;">
+        <button class="primary" onclick="sendCoins()">Монеты</button>
       </div>
-    </section>
-
-    <!-- Настройки (сокращено) -->
-    <section id="p-more">
-      <h2>⚙️ Настройки</h2>
-      <p class="muted">Здесь настройки аккаунта.</p>
-    </section>
-  </main>
-
-  <nav>
-    <button class="on" data-p="p-upgrade"><span class="ic">🎡</span>Апгрейд</button>
-    <button data-p="p-cases"><span class="ic">📦</span>Кейсы</button>
-    <button data-p="p-market"><span class="ic">🛒</span>Маркет</button>
-    <button data-p="p-inv"><span class="ic">🎒</span>Инвентарь</button>
-    <button data-p="p-profile"><span class="ic">👤</span>Профиль</button>
-    <button data-p="p-more"><span class="ic">⚙️</span>Ещё</button>
-  </nav>
-
-  <script>
-    /* ================= FIREBASE CONFIG ================= */
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyAFg8jtdZDE8A-bDwzkYJn2cDYyS6XbMYQ",
-      authDomain: "skinup-4c47f.firebaseapp.com",
-      databaseURL: "https://skinup-4c47f-default-rtdb.firebaseio.com",
-      projectId: "skinup-4c47f",
-      storageBucket: "skinup-4c47f.fire
+      <div class="inv-grid" id="tradeInv"></div
