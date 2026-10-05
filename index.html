@@ -5,22 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkinUp — колесо, кейсы, магазин, инвентарь</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <!-- Firebase (если не нужен — можно удалить эти 3 строки, интерфейс всё равно отобразится) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:'Segoe UI',Arial,sans-serif;
            background:radial-gradient(circle at 50% 120%, rgba(255,216,61,.05) 0%, rgba(255,216,61,.015) 45%, transparent 70%), #0d0d14;
            background-attachment:fixed; color:#eee; padding-bottom:70px; -webkit-tap-highlight-color:transparent; }
-
     #snow { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
     #snow i { position:absolute; top:-14px; border-radius:50%; background:#ffd83d;
               box-shadow:0 0 6px rgba(255,216,61,.55); animation:fall linear infinite; }
     @keyframes fall { to { transform:translateY(112vh); } }
-
     header { position:sticky; top:0; z-index:10; background:#14141f; padding:10px 14px;
              display:flex; justify-content:space-between; align-items:center;
              border-bottom:2px solid #ffd83d; }
@@ -41,8 +37,6 @@
     input[type="text"], input[type="email"], input[type="password"] {
       background:#0f0f18; border:1px solid #2a2a3a; color:#eee; border-radius:10px;
       padding:10px 12px; font-family:inherit; font-size:14px; outline:none; }
-
-    /* Auth */
     .auth-ov { position:fixed; inset:0; background:#0d0d14; z-index:100; display:none;
                align-items:center; justify-content:center; padding:16px; }
     .auth-ov.show { display:flex; }
@@ -56,8 +50,6 @@
     .auth-err { color:#ff6b6b; font-size:12.5px; min-height:17px; margin-bottom:8px; }
     .auth-note { color:#888; font-size:11.5px; text-align:center; margin-top:10px; }
     .auth-card button.primary { width:100%; }
-
-    /* Wheel */
     .wheel-wrap { position:relative; width:280px; height:280px; margin:14px auto 8px; }
     .wheel { position:absolute; inset:0; border-radius:50%; background:#111;
              box-shadow:0 0 30px rgba(255,216,61,.2), inset 0 0 22px rgba(0,0,0,.6); }
@@ -79,7 +71,6 @@
     .lbl-r { right:-8px; top:50%; transform:translateY(-50%); }
     .lbl-b { bottom:-4px; left:50%; transform:translateX(-50%); color:#ffd83d; }
     .wheel-result { text-align:center; font-weight:800; font-size:16px; min-height:24px; margin-top:8px; }
-
     .bet-row { display:flex; align-items:stretch; gap:8px; margin:12px 0 10px; }
     .bet-card { flex:1; border-radius:14px; padding:12px 8px; text-align:center;
                 background:#181824; min-height:150px; }
@@ -93,16 +84,12 @@
     .spin-controls .roll-btn { flex:1; }
     .spin-controls .bolt { max-width:56px; font-size:20px; background:#2a2a3a; }
     .spin-controls .bolt.on { background:#ffd83d; color:#111; }
-
-    /* Cases */
     .cases-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
     .case-card { background:#181824; border:1px solid #2a2a3a; border-radius:12px;
                  padding:8px 4px; text-align:center; cursor:pointer; transition:.15s; }
     .case-card.sel { border-color:#ffd83d; background:#2a2410; transform:translateY(-3px); }
     .case-qty { display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0; }
     .case-qty button { width:40px; height:40px; border-radius:50%; font-size:20px; }
-
-    /* Market */
     .mkt-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
     .mkt-bar select, .mkt-bar input { background:#181824; color:#eee; border:1px solid #2a2a3a;
              border-radius:10px; padding:9px 10px; font-family:inherit; font-size:13px; }
@@ -110,13 +97,9 @@
     .skin { background:#181824; border:1px solid #2a2a3a; border-radius:10px; padding:10px 6px;
             text-align:center; font-size:12px; }
     .skin.sel { border-color:#ffd83d; background:#2a2410; outline:2px solid #ffd83d; }
-
-    /* Inv */
     .inv-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
     .inv-sum { font-size:14px; margin-bottom:10px; }
     .inv-sum b { color:#ffd83d; }
-
-    /* Profile & Lottery */
     .lb { width:100%; border-collapse:collapse; font-size:13px; }
     .lb td { padding:7px 6px; border-bottom:1px solid #222; }
     .lb tr.me td { background:#2a2410; color:#ffd83d; font-weight:700; }
@@ -131,15 +114,12 @@
     .draw-btn { width:100%; margin-top:12px; }
     .spinner-anim { animation:spin 1.2s linear infinite; color:#ffd83d; }
     @keyframes spin { 100% { transform:rotate(360deg); } }
-
-    /* Nav */
     nav { position:fixed; bottom:0; left:0; right:0; background:#14141f;
           border-top:2px solid #2a2a3a; display:flex; z-index:20; }
     nav button { flex:1; background:none; border:none; border-radius:0; padding:9px 2px 11px;
                  font-size:10px; color:#888; font-weight:700; }
     nav button .ic { display:block; font-size:18px; }
     nav button.on { color:#ffd83d; border-top:3px solid #ffd83d; }
-
     .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
              background:#ffd83d; color:#111; padding:10px 18px; border-radius:22px;
              font-weight:700; font-size:13px; z-index:99; opacity:0; transition:.3s; pointer-events:none; }
@@ -161,4 +141,263 @@
         <div class="auth-logo">SKINUP</div>
         <div class="auth-sub">Войди в аккаунт, чтобы играть</div>
         <div class="auth-tabs">
-          <button id="tabLogin" class
+          <button id="tabLogin" class="on">Вход</button>
+          <button id="tabReg">Регистрация</button>
+        </div>
+        <form id="formLogin">
+          <input type="email" placeholder="Email" required>
+          <input type="password" placeholder="Пароль" required>
+          <button type="submit" class="primary">Войти</button>
+        </form>
+        <form id="formReg" style="display:none">
+          <input type="email" placeholder="Email" required>
+          <input type="password" placeholder="Пароль" required>
+          <button type="submit" class="primary">Создать аккаунт</button>
+        </form>
+        <div class="auth-err" id="authErr"></div>
+        <div class="auth-note">Нет аккаунта? Нажми «Регистрация»</div>
+      </div>
+    </div>
+
+    <!-- Wheel -->
+    <section id="p-wheel" class="active">
+      <h2>Колесо удачи</h2>
+      <div class="wheel-wrap">
+        <div class="wheel">
+          <div class="ring-lbl lbl-top">25%</div>
+          <div class="ring-lbl lbl-l">10%</div>
+          <div class="ring-lbl lbl-r">10%</div>
+          <div class="ring-lbl lbl-b">55%</div>
+        </div>
+        <div class="wheel-cover">
+          <div class="wc-pct">0%</div>
+          <div class="wc-sub">шанс на выигрыш</div>
+        </div>
+        <div class="needle-rot" id="needleRot"><div class="needle"></div></div>
+      </div>
+      <div class="wheel-result" id="wheelRes"></div>
+      <div class="bet-row">
+        <div class="bet-card stake">
+          <div class="bet-title">СТАВКА</div>
+          <div class="bet-em">🪙</div>
+          <input type="number" id="betVal" value="1000" min="100">
+          <div class="bet-pr">монет</div>
+        </div>
+        <div class="bet-card target">
+          <div class="bet-title">ЦЕЛЬ</div>
+          <div class="bet-em">💎</div>
+          <div class="bet-nm">AWP | Dragon Lore</div>
+          <div class="bet-pr">~150 000 ₽</div>
+        </div>
+      </div>
+      <div class="spin-controls">
+        <button class="roll-btn primary" id="spinBtn">КРУТИТЬ</button>
+        <button class="bolt on" id="boostBtn">⚡</button>
+      </div>
+    </section>
+
+    <!-- Cases -->
+    <section id="p-cases">
+      <h2>Кейсы</h2>
+      <div class="cases-grid" id="casesGrid">
+        <!-- Заполняется JS -->
+      </div>
+      <div class="case-qty">
+        <button onclick="qtyCases(-1)">−</button>
+        <span id="qtyVal">1</span>
+        <button onclick="qtyCases(1)">+</button>
+      </div>
+      <button class="roll-btn primary">Открыть выбранные кейсы</button>
+    </section>
+
+    <!-- Shop -->
+    <section id="p-shop">
+      <h2>Магазин</h2>
+      <div class="mkt-bar">
+        <select><option>Все скины</option></select>
+        <input type="text" placeholder="Поиск по названию">
+      </div>
+      <div class="shop-grid" id="shopGrid">
+        <!-- Заполняется JS -->
+      </div>
+    </section>
+
+    <!-- Inventory -->
+    <section id="p-inv">
+      <h2>Инвентарь</h2>
+      <div class="inv-sum">Всего предметов: <b id="invCount">0</b></div>
+      <div class="inv-grid" id="invGrid">
+        <!-- Заполняется JS -->
+      </div>
+    </section>
+
+    <!-- Profile + Lottery -->
+    <section id="p-profile">
+      <h2>Профиль</h2>
+      <div class="lottery-card">
+        <h3>Лотерея недели</h3>
+        <div class="lottery-info">
+          <div>Стоимость билета: <span class="ticket-price">100 000 🪙</span></div>
+          <div class="muted">Розыгрыш: воскресенье, 12:00 МСК</div>
+          <div class="muted">Призовой фонд: 100% от стоимости билетов</div>
+        </div>
+        <button class="primary" id="buyTicketBtn">Купить билет</button>
+        <div class="muted" style="margin-top:8px;">Ваши билеты: <b id="myTickets">0</b></div>
+        <div class="muted">Ваш шанс: <span class="chance-display" id="myChance">0%</span></div>
+        <div class="participants-list" id="participantsList">
+          <!-- Заполняется JS -->
+        </div>
+        <button class="draw-btn" id="drawBtn">Провести розыгрыш</button>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button onclick="nav('wheel')" class="on"><span class="ic">🎡</span>Колесо</button>
+    <button onclick="nav('cases')"><span class="ic">📦</span>Кейсы</button>
+    <button onclick="nav('shop')"><span class="ic">🛍</span>Магазин</button>
+    <button onclick="nav('inv')"><span class="ic">🎒</span>Инвентарь</button>
+    <button onclick="nav('profile')"><span class="ic">👤</span>Профиль</button>
+  </nav>
+
+  <script>
+    // Демо-данные (без Firebase)
+    const db = {
+      users: [{ id: 'demo', coins: 500000, tickets: 2 }],
+      lottery: { tickets: 15, participants: [
+        { name: 'Player_1', tickets: 3 },
+        { name: 'Player_2', tickets: 2 },
+        { name: 'Player_3', tickets: 5 },
+        { name: 'Player_4', tickets: 5 }
+      ]}
+    };
+    const user = db.users;
+
+    // UI Helpers
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+    function nav(page) {
+      document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
+      document.getElementById(`p-\${page}`).classList.add('active');
+      event.target.closest('button').classList.add('on');
+    }
+    function qtyCases(d) {
+      const v = +document.getElementById('qtyVal').textContent;
+      document.getElementById('qtyVal').textContent = Math.max(1, v + d);
+    }
+
+    // Wheel Logic
+    document.getElementById('spinBtn').onclick = () => {
+      const bet = +document.getElementById('betVal').value;
+      if (bet > user.coins) return toast('Недостаточно монет!');
+      const rot = Math.floor(Math.random() * 3600) + 360;
+      document.getElementById('needleRot').style.transform = `rotate(\${rot}deg)`;
+      document.getElementById('wheelRes').textContent = 'Результат: ...';
+      setTimeout(() => {
+        const angle = rot % 360;
+        const res = angle < 90 ? 'Выигрыш!' : 'Проигрыш';
+        document.getElementById('wheelRes').textContent = `Результат: \${res}`;
+        user.coins += res === 'Выигрыш!' ? bet * 2 : -bet;
+        document.getElementById('bal').textContent = user.coins.toLocaleString();
+      }, 4000);
+    };
+
+    // Lottery Logic
+    const buyBtn = document.getElementById('buyTicketBtn');
+    const myT = document.getElementById('myTickets');
+    const myC = document.getElementById('myChance');
+    const list = document.getElementById('participantsList');
+    const drawBtn = document.getElementById('drawBtn');
+
+    buyBtn.onclick = () => {
+      if (user.coins < 100000) return toast('Недостаточно монет для билета!');
+      user.coins -= 100000;
+      user.tickets++;
+      db.lottery.tickets++;
+      document.getElementById('bal').textContent = user.coins.toLocaleString();
+      myT.textContent = user.tickets;
+      updateChance();
+      toast('Билет куплен!');
+    };
+
+    function updateChance() {
+      const total = db.lottery.tickets;
+      const mine = user.tickets;
+      myC.textContent = total ? ((mine / total) * 100).toFixed(1) + '%' : '0%';
+      // Перерисовать список
+      list.innerHTML = '';
+      db.lottery.participants.forEach(p => {
+        const tr = document.createElement('div');
+        tr.className = 'participant-item';
+        tr.innerHTML = `<span>${p.name}</span><span>${p.tickets} шт.</span>`;
+        list.appendChild(tr);
+      });
+      // Добавить себя
+      const me = document.createElement('div');
+      me.className = 'participant-item';
+      me.innerHTML = `<span class="me">Вы</span><span>\${user.tickets} шт.</span>`;
+      list.appendChild(me);
+    }
+
+    drawBtn.onclick = () => {
+      const total = db.lottery.tickets;
+      if (total < 2) return toast('Нужно минимум 2 билета для розыгрыша!');
+      const winnerIdx = Math.floor(Math.random() * total);
+      // Простая симуляция: считаем по порядку билетов
+      let count = 0;
+      let winner = null;
+      const all = [...db.lottery.participants, { name: 'Вы', tickets: user.tickets }];
+      for (const p of all) {
+        if (count + p.tickets > winnerIdx) { winner = p.name; break; }
+        count += p.tickets;
+      }
+      toast(`Победитель: \${winner}!`);
+    };
+
+    // Init
+    document.getElementById('bal').textContent = user.coins.toLocaleString();
+    updateChance();
+
+    // Auth Tabs
+    document.getElementById('tabLogin').onclick = () => {
+      document.getElementById('formLogin').style.display = 'block';
+      document.getElementById('formReg').style.display = 'none';
+      document.querySelectorAll('.auth-tabs button').forEach(b => b.classList.remove('on'));
+      event.target.classList.add('on');
+    };
+    document.getElementById('tabReg').onclick = () => {
+      document.getElementById('formReg').style.display = 'block';
+      document.getElementById('formLogin').style.display = 'none';
+      document.querySelectorAll('.auth-tabs button').forEach(b => b.classList.remove('on'));
+      event.target.classList.add('on');
+    };
+
+    // Auth Forms (demo)
+    document.getElementById('formLogin').onsubmit = e => {
+      e.preventDefault();
+      document.getElementById('authOv').classList.remove('show');
+      toast('Вход выполнен (демо)');
+    };
+    document.getElementById('formReg').onsubmit = e => {
+      e.preventDefault();
+      document.getElementById('authOv').classList.remove('show');
+      toast('Аккаунт создан (демо)');
+    };
+
+    // Snow animation
+    const snow = document.getElementById('snow');
+    for (let i = 0; i < 40; i++) {
+      const dot = document.createElement('i');
+      dot.style.left = Math.random() * 100 + 'vw';
+      dot.style.animationDuration = Math.random() * 10 + 10 + 's';
+      dot.style.animationDelay = Math.random() * 10 + 's';
+      snow.appendChild(dot);
+    }
+  </script>
+</body>
+</html>
